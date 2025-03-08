@@ -2,8 +2,16 @@ import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { toast } from "sonner";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { isExamActive, getExamStatus } from "../services/scheduler";
+
+// Create an exam storage service
+const getStoredExams = () => {
+  const examsJson = localStorage.getItem("user_exams");
+  return examsJson ? JSON.parse(examsJson) : [];
+};
 
 const ExamCodeEntry: React.FC = () => {
   const [examCode, setExamCode] = useState("");
@@ -20,13 +28,34 @@ const ExamCodeEntry: React.FC = () => {
 
     setIsLoading(true);
 
-    // Simulate API call to validate exam code
+    // Check if the exam code exists in localStorage
+    const exams = getStoredExams();
+    const exam = exams.find((exam: any) => exam.code === examCode);
+
     setTimeout(() => {
-      toast.success(`Exam code ${examCode} is valid`);
       setIsLoading(false);
-      // Navigate to the exam page with the provided code
-      navigate(`/exam/${examCode}`);
-    }, 1500);
+      if (exam) {
+        // Check if exam is scheduled and not yet available
+        if (exam.scheduling && !isExamActive(exam.scheduling)) {
+          const formattedDate = format(new Date(exam.scheduling.date), "PPP");
+          const formattedTime = exam.scheduling.startTime;
+
+          toast.error(
+            `This exam is scheduled for ${formattedDate} at ${formattedTime}`,
+            {
+              description: "You can't access it until the scheduled time.",
+              duration: 5000,
+            }
+          );
+          return;
+        }
+
+        toast.success(`Exam code ${examCode} is valid`);
+        navigate(`/exam/${examCode}`);
+      } else {
+        toast.error(`Exam code ${examCode} is not valid`);
+      }
+    }, 1000);
   };
 
   return (

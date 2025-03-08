@@ -1,23 +1,28 @@
-
-import React, { useState, useRef } from 'react';
-import { Button } from './ui/button';
-import { Upload, File, X, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState, useRef } from "react";
+import { Button } from "./ui/button";
+import { Upload, File, X, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface FileUploadProps {
   accept?: string;
+  acceptedTypes?: string; // Added to match usage in CreateExamForm
   maxSize?: number; // in MB
-  title: string;
-  description: string;
+  title?: string; // Made optional
+  description?: string; // Made optional
+  label?: string; // Added to match usage in CreateExamForm
   onFileSelect: (file: File) => void;
+  onUpload?: (file: File) => void; // Added to match usage in CreateExamForm
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
-  accept = '.pdf,.doc,.docx',
+  accept = ".pdf,.doc,.docx",
+  acceptedTypes, // Use this if provided
   maxSize = 10,
   title,
   description,
+  label,
   onFileSelect,
+  onUpload,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -25,17 +30,20 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    
+
     if (!selectedFile) return;
-    
+
     if (selectedFile.size > maxSize * 1024 * 1024) {
       toast.error(`File is too large. Maximum size is ${maxSize}MB.`);
       return;
     }
-    
+
     setFile(selectedFile);
-    onFileSelect(selectedFile);
-    toast.success('File uploaded successfully');
+    if (onUpload) {
+      onUpload(selectedFile); // Use onUpload if provided
+    }
+    onFileSelect(selectedFile); // Always call onFileSelect
+    toast.success("File uploaded successfully");
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -51,39 +59,48 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
-    
+
     const droppedFile = e.dataTransfer.files?.[0];
-    
+
     if (!droppedFile) return;
-    
+
     if (droppedFile.size > maxSize * 1024 * 1024) {
       toast.error(`File is too large. Maximum size is ${maxSize}MB.`);
       return;
     }
-    
+
     setFile(droppedFile);
-    onFileSelect(droppedFile);
-    toast.success('File uploaded successfully');
+    if (onUpload) {
+      onUpload(droppedFile); // Use onUpload if provided
+    }
+    onFileSelect(droppedFile); // Always call onFileSelect
+    toast.success("File uploaded successfully");
   };
 
   const clearFile = () => {
     setFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
+
+  // Use provided props with fallbacks
+  const displayTitle = title || label || "Upload File";
+  const displayDescription =
+    description || `Supports ${acceptedTypes || accept} (Max ${maxSize}MB)`;
+  const acceptValue = acceptedTypes || accept;
 
   return (
     <div className="w-full animate-fade-in">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-muted-foreground text-sm">{description}</p>
+        <h3 className="text-lg font-semibold">{displayTitle}</h3>
+        <p className="text-muted-foreground text-sm">{displayDescription}</p>
       </div>
-      
+
       {!file ? (
         <div
           className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-            dragging ? 'border-primary bg-primary/5' : 'border-border'
+            dragging ? "border-primary bg-primary/5" : "border-border"
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -93,10 +110,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
             type="file"
             ref={fileInputRef}
             className="hidden"
-            accept={accept}
+            accept={acceptValue}
             onChange={handleFileChange}
           />
-          
+
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center">
               <Upload className="h-8 w-8 text-primary" />
@@ -104,7 +121,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <div>
               <p className="font-medium">Drag & drop your file here or</p>
               <p className="text-sm text-muted-foreground mb-4">
-                Supports {accept.split(',').join(', ')} (Max {maxSize}MB)
+                Supports {acceptValue.split(",").join(", ")} (Max {maxSize}MB)
               </p>
               <Button
                 type="button"
@@ -132,7 +149,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Button
               size="icon"
