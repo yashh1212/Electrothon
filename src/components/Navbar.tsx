@@ -2,9 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../services/auth";
 import { Button } from "./ui/button";
-import { LogOut, User, FileText, LogIn } from "lucide-react";
-import AnimatedBackground from "../components/AnimatedBackground";
-
+import { LogOut, User, FileText, LogIn, ShieldCheck } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout, login } = useAuth();
@@ -16,10 +14,10 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold text-lg group-hover:scale-110 transition-transform">
-              AE
+              EM
             </div>
             <span className="text-xl font-semibold tracking-tight text-white">
-              AEAI
+              ExamMaster
             </span>
           </Link>
 
@@ -48,6 +46,19 @@ const Navbar: React.FC = () => {
                   } transition-colors`}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  to="/admin"
+                  className={`text-sm font-medium ${
+                    location.pathname === "/admin"
+                      ? "text-white"
+                      : "text-gray-200 hover:text-white"
+                  } transition-colors`}
+                >
+                  <div className="flex items-center">
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    <span>Admin</span>
+                  </div>
                 </Link>
                 <div className="flex items-center space-x-2">
                   <div className="text-sm font-medium flex items-center text-gray-200">

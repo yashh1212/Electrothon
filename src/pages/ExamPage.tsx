@@ -34,7 +34,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import ExamCertificate from "@/components/ExamCertificate";
-import { getStorageItem, STORAGE_KEYS } from "@/services/storage";
+import {
+  getStorageItem,
+  setStorageItem,
+  STORAGE_KEYS,
+} from "@/services/storage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Question {
@@ -68,12 +72,26 @@ interface Exam {
   settings: ExamSettings;
 }
 
+interface ExamResult {
+  studentId: string;
+  studentName: string;
+  examId: string;
+  examCode: string;
+  examTitle: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  tabSwitches: number;
+  completedAt: Date;
+  passed: boolean;
+}
+
 const ExamPage: React.FC = () => {
   const { examCode } = useParams();
   const navigate = useNavigate();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(3600);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [examCompleted, setExamCompleted] = useState(false);
   const [score, setScore] = useState(0);
@@ -90,10 +108,12 @@ const ExamPage: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const [showCertificate, setShowCertificate] = useState(false);
   const certificateRef = useRef<HTMLDivElement>(null);
-  const [studentName, setStudentName] = useState("John Doe"); // Added student name for certificate
+  const [studentName, setStudentName] = useState("John Doe");
   const [studentInfo, setStudentInfo] = useState<any>(null);
+  const [showSecurityViolationDialog, setShowSecurityViolationDialog] =
+    useState(false);
+  const MAX_TAB_SWITCHES = 3;
 
-  // Sample exam data with certificate generation enabled
   const [examData, setExamData] = useState<{
     title: string;
     description: string;
@@ -169,18 +189,15 @@ const ExamPage: React.FC = () => {
     ],
   });
 
-  // Load exam data from localStorage if examCode is available
   useEffect(() => {
     if (examCode) {
       const storedExams = getStorageItem<Exam[]>(STORAGE_KEYS.USER_EXAMS, []);
 
       if (storedExams && storedExams.length > 0) {
         try {
-          // Find the exam with the matching code
           const foundExam = storedExams.find((exam) => exam.code === examCode);
 
           if (foundExam) {
-            // Use the found exam data
             setExamData({
               title: foundExam.title,
               description: `Exam Code: ${foundExam.code}`,
@@ -193,7 +210,7 @@ const ExamPage: React.FC = () => {
                 generateCertificate:
                   foundExam.settings?.generateCertificate || true,
                 preventTabSwitching:
-                  foundExam.settings?.preventTabSwitching !== false, // Default to true
+                  foundExam.settings?.preventTabSwitching !== false,
               },
               questions:
                 foundExam.questions.filter((q) => q.type === "mcq") || [],
@@ -209,7 +226,6 @@ const ExamPage: React.FC = () => {
       }
     }
 
-    // Fetch student information from sessionStorage
     const studentData = sessionStorage.getItem("CURRENT_STUDENT");
     if (studentData) {
       try {
@@ -222,36 +238,42 @@ const ExamPage: React.FC = () => {
     }
   }, [examCode]);
 
-  // Add tab visibility change detection
   useEffect(() => {
     if (!examData.settings.preventTabSwitching || examCompleted) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
+        const newTabSwitchCount = tabSwitchCount + 1;
+        setTabSwitchCount(newTabSwitchCount);
         setSecurityWarnings((prev) => ({ ...prev, tabSwitch: true }));
-        setTabSwitchCount((prev) => prev + 1);
 
-        toast.warning("Tab switching detected", {
-          description: "Switching tabs during an exam is not allowed",
-          id: "tab-switch-warning",
-        });
+        toast.warning(
+          `Tab switch detected (${newTabSwitchCount}/${MAX_TAB_SWITCHES})`,
+          {
+            description: "Switching tabs during an exam is not allowed",
+            id: "tab-switch-warning",
+          }
+        );
 
-        // Reset the warning after 5 seconds
         setTimeout(() => {
           setSecurityWarnings((prev) => ({ ...prev, tabSwitch: false }));
         }, 5000);
+
+        if (newTabSwitchCount >= MAX_TAB_SWITCHES) {
+          setShowSecurityViolationDialog(true);
+        }
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Also detect window blur which can happen when user opens dev tools or other apps
     const handleWindowBlur = () => {
       if (!examCompleted) {
+        const newTabSwitchCount = tabSwitchCount + 1;
+        setTabSwitchCount(newTabSwitchCount);
         setSecurityWarnings((prev) => ({ ...prev, tabSwitch: true }));
-        setTabSwitchCount((prev) => prev + 1);
 
-        toast.warning("Focus lost from exam window", {
+        toast.warning(`Focus lost (${newTabSwitchCount}/${MAX_TAB_SWITCHES})`, {
           description: "Leaving the exam window is not allowed",
           id: "focus-warning",
         });
@@ -259,6 +281,10 @@ const ExamPage: React.FC = () => {
         setTimeout(() => {
           setSecurityWarnings((prev) => ({ ...prev, tabSwitch: false }));
         }, 5000);
+
+        if (newTabSwitchCount >= MAX_TAB_SWITCHES) {
+          setShowSecurityViolationDialog(true);
+        }
       }
     };
 
@@ -268,7 +294,7 @@ const ExamPage: React.FC = () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", handleWindowBlur);
     };
-  }, [examData.settings.preventTabSwitching, examCompleted]);
+  }, [examData.settings.preventTabSwitching, examCompleted, tabSwitchCount]);
 
   useEffect(() => {
     const requestPermissions = async () => {
@@ -386,7 +412,6 @@ const ExamPage: React.FC = () => {
     let incorrect = 0;
 
     examData.questions.forEach((question, index) => {
-      // Find the index of the correct option by matching correctOption with option.id
       const correctOptionIndex = question.options.findIndex(
         (option) => option.id === question.correctOption
       );
@@ -423,7 +448,7 @@ const ExamPage: React.FC = () => {
     };
   };
 
-  const handleSubmitExam = () => {
+  const handleSubmitExam = (securityViolation = false) => {
     setIsSubmitting(true);
 
     setTimeout(() => {
@@ -436,10 +461,42 @@ const ExamPage: React.FC = () => {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
 
-      toast.success("Exam submitted successfully!");
+      if (securityViolation) {
+        toast.error("Exam ended due to security violations");
+      } else {
+        toast.success("Exam submitted successfully!");
+      }
 
-      // Auto-show certificate for the sample exam
-      if (examData.settings.generateCertificate && result.percentage >= 60) {
+      if (studentInfo && examCode) {
+        const examResult: ExamResult = {
+          studentId: studentInfo.id || studentInfo.studentId || "unknown",
+          studentName: studentName,
+          examId: examCode,
+          examCode: examCode,
+          examTitle: examData.title,
+          score: result.percentage,
+          totalQuestions: result.total,
+          correctAnswers: result.score,
+          tabSwitches: tabSwitchCount,
+          completedAt: new Date(),
+          passed: result.percentage >= 60,
+        };
+
+        const existingResults = getStorageItem<ExamResult[]>(
+          STORAGE_KEYS.EXAM_RESULTS,
+          []
+        );
+
+        existingResults.push(examResult);
+
+        setStorageItem(STORAGE_KEYS.EXAM_RESULTS, existingResults);
+      }
+
+      if (
+        examData.settings.generateCertificate &&
+        result.percentage >= 60 &&
+        !securityViolation
+      ) {
         setTimeout(() => {
           setShowCertificate(true);
         }, 1500);
@@ -519,6 +576,11 @@ const ExamPage: React.FC = () => {
     }
   };
 
+  const handleSecurityViolation = () => {
+    setShowSecurityViolationDialog(false);
+    handleSubmitExam(true);
+  };
+
   if (
     (examData.settings.eyeTracking || examData.settings.faceDetection) &&
     !permissionsGranted &&
@@ -572,7 +634,7 @@ const ExamPage: React.FC = () => {
 
                   <Button
                     onClick={handleRetryPermissions}
-                    className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0 w-full"
+                    className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Grant Camera Access
@@ -586,7 +648,6 @@ const ExamPage: React.FC = () => {
     );
   }
 
-  // Early return for no questions
   if (examData.questions.length === 0) {
     return (
       <div className="relative min-h-screen bg-black overflow-hidden">
@@ -659,8 +720,9 @@ const ExamPage: React.FC = () => {
                   <Alert className="bg-amber-900/30 border-amber-500/30 mb-2">
                     <Layers className="h-4 w-4 text-amber-400" />
                     <AlertDescription className="text-amber-200 text-sm">
-                      Tab switching detection is enabled. Switching tabs during
-                      the exam will be recorded.
+                      Tab switching detection is enabled. The exam will
+                      automatically end after {MAX_TAB_SWITCHES} tab switches.
+                      Current count: {tabSwitchCount}/{MAX_TAB_SWITCHES}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -958,6 +1020,32 @@ const ExamPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={showSecurityViolationDialog}
+        onOpenChange={setShowSecurityViolationDialog}
+      >
+        <DialogContent className="bg-gray-900 border border-red-800">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Security Violation Detected
+            </DialogTitle>
+            <DialogDescription>
+              You have switched tabs or lost focus {MAX_TAB_SWITCHES} times,
+              which is not allowed during this exam. The exam will now end and
+              your current answers will be submitted.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={handleSecurityViolation}
+              className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white border-0"
+            >
+              End Exam
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
         <DialogContent className="bg-gray-900 border border-gray-800 max-w-3xl">
