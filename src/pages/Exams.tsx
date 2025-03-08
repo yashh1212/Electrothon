@@ -12,10 +12,12 @@ const EXAMS_STORAGE_KEY = "user_exams";
 interface Question {
   id: string;
   text: string;
-  type?: "mcq" | "shortanswer" | "longanswer";
+  type?: "mcq" | "shortanswer" | "longanswer" | "numerical";
   options?: { id: string; text: string }[];
   correctOption?: string;
   answer?: string;
+  numericalAnswer?: number;
+  tolerance?: number;
 }
 
 interface Exam {
@@ -31,6 +33,7 @@ interface Exam {
     eyeTracking: boolean;
     faceDetection: boolean;
     displayResults: boolean;
+    generateCertificate: boolean;
   };
   modelAnswerSheet?: string;
   syllabus?: string;
@@ -65,6 +68,7 @@ const ExamsPage: React.FC = () => {
               negativeMarkingValue: exam.settings?.negativeMarkingValue || 0.25,
               eyeTracking: exam.settings?.eyeTracking || false,
               faceDetection: exam.settings?.faceDetection || false,
+              generateCertificate: exam.settings?.generateCertificate || false,
             },
             questions: exam.questions || [],
           }));
@@ -96,6 +100,7 @@ const ExamsPage: React.FC = () => {
             eyeTracking: false,
             faceDetection: true,
             displayResults: true,
+            generateCertificate: true,
           },
         },
         {
@@ -117,6 +122,7 @@ const ExamsPage: React.FC = () => {
             eyeTracking: true,
             faceDetection: true,
             displayResults: false,
+            generateCertificate: false,
           },
         },
       ];
@@ -148,10 +154,12 @@ const ExamsPage: React.FC = () => {
       </div>
     );
   }
+
   const copyExamCode = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success("Exam code copied to clipboard");
   };
+
   const handleCreateExam = (createdExam: Exam) => {
     setExams([createdExam, ...exams]);
     setShowExamCode(createdExam.code);
@@ -185,6 +193,7 @@ const ExamsPage: React.FC = () => {
                 onDismiss={() => setShowExamCode(null)}
               />
             )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               <CreateExamForm onExamCreate={handleCreateExam} />
 

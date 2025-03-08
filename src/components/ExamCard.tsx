@@ -8,6 +8,8 @@ import {
   ArrowRight,
   EyeOff,
   Camera,
+  Medal,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
@@ -19,6 +21,17 @@ import {
   CardTitle,
   CardFooter,
 } from "../components/ui/card";
+
+interface Question {
+  id: string;
+  text: string;
+  type?: "mcq" | "shortanswer" | "longanswer" | "numerical";
+  options?: { id: string; text: string }[];
+  correctOption?: string;
+  answer?: string;
+  numericalAnswer?: number;
+  tolerance?: number;
+}
 
 interface Exam {
   id: string;
@@ -33,6 +46,7 @@ interface Exam {
     eyeTracking: boolean;
     faceDetection: boolean;
     displayResults: boolean;
+    generateCertificate: boolean;
   };
   modelAnswerSheet?: string;
   syllabus?: string;
@@ -42,15 +56,6 @@ interface Exam {
     duration: number;
     timeZone: string;
   };
-}
-
-interface Question {
-  id: string;
-  text: string;
-  type?: "mcq" | "shortanswer" | "longanswer";
-  options?: { id: string; text: string }[];
-  correctOption?: string;
-  answer?: string;
 }
 
 interface ExamCardProps {
@@ -100,7 +105,14 @@ const ExamCard: React.FC<ExamCardProps> = ({ exam, copyExamCode }) => {
             )}
             {exam.settings.negativeMarking && (
               <div className="flex items-center bg-red-900/30 px-2 py-1 rounded-md text-xs text-red-300 border border-red-700/30">
-                -{exam.settings.negativeMarkingValue}
+                <Ban className="h-3 w-3 mr-1" />-
+                {exam.settings.negativeMarkingValue}
+              </div>
+            )}
+            {exam.settings.generateCertificate && (
+              <div className="flex items-center bg-amber-900/30 px-2 py-1 rounded-md text-xs text-amber-300 border border-amber-700/30">
+                <Medal className="h-3 w-3 mr-1" />
+                Certificate
               </div>
             )}
           </div>

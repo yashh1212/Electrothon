@@ -2,7 +2,14 @@ import React from "react";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { Input } from "./ui/input";
-import { EyeOff, Camera } from "lucide-react";
+import {
+  EyeOff,
+  Camera,
+  Medal,
+  Ban,
+  FileCheck,
+  AlertOctagon,
+} from "lucide-react";
 
 interface ExamSettings {
   negativeMarking: boolean;
@@ -10,6 +17,7 @@ interface ExamSettings {
   eyeTracking: boolean;
   faceDetection: boolean;
   displayResults: boolean;
+  generateCertificate: boolean;
 }
 
 interface ExamSettingsProps {
@@ -27,7 +35,10 @@ const ExamSettingsComponent: React.FC<ExamSettingsProps> = ({
 
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label htmlFor="negative-marking">Negative Marking</Label>
+          <Label htmlFor="negative-marking" className="flex items-center">
+            <Ban className="h-4 w-4 mr-2 text-red-400" />
+            Negative Marking
+          </Label>
           <div className="text-xs text-gray-400">
             Apply penalty for incorrect MCQ answers
           </div>
@@ -67,11 +78,9 @@ const ExamSettingsComponent: React.FC<ExamSettingsProps> = ({
       <div className="border-t border-white/10 pt-4">
         <div className="flex items-center justify-between mb-3">
           <div className="space-y-0.5">
-            <Label htmlFor="eye-tracking">
-              <div className="flex items-center">
-                <EyeOff className="h-4 w-4 mr-2" />
-                Enable Eye Tracking
-              </div>
+            <Label htmlFor="eye-tracking" className="flex items-center">
+              <EyeOff className="h-4 w-4 mr-2 text-purple-400" />
+              Enable Eye Tracking
             </Label>
             <div className="text-xs text-gray-400">
               Monitor student's eye movement to prevent cheating
@@ -88,11 +97,9 @@ const ExamSettingsComponent: React.FC<ExamSettingsProps> = ({
 
         <div className="flex items-center justify-between mb-3">
           <div className="space-y-0.5">
-            <Label htmlFor="face-detection">
-              <div className="flex items-center">
-                <Camera className="h-4 w-4 mr-2" />
-                Face Detection
-              </div>
+            <Label htmlFor="face-detection" className="flex items-center">
+              <Camera className="h-4 w-4 mr-2 text-blue-400" />
+              Face Detection
             </Label>
             <div className="text-xs text-gray-400">
               Verify student identity and monitor presence
@@ -107,9 +114,12 @@ const ExamSettingsComponent: React.FC<ExamSettingsProps> = ({
           />
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="space-y-0.5">
-            <Label htmlFor="display-results">Display Results</Label>
+            <Label htmlFor="display-results" className="flex items-center">
+              <FileCheck className="h-4 w-4 mr-2 text-green-400" />
+              Display Results
+            </Label>
             <div className="text-xs text-gray-400">
               Show results to students after submission
             </div>
@@ -119,6 +129,25 @@ const ExamSettingsComponent: React.FC<ExamSettingsProps> = ({
             checked={settings.displayResults}
             onCheckedChange={(checked) =>
               onChange({ ...settings, displayResults: checked })
+            }
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="generate-certificate" className="flex items-center">
+              <Medal className="h-4 w-4 mr-2 text-amber-400" />
+              Generate Certificate
+            </Label>
+            <div className="text-xs text-gray-400">
+              Create completion certificate for passing students
+            </div>
+          </div>
+          <Switch
+            id="generate-certificate"
+            checked={settings.generateCertificate}
+            onCheckedChange={(checked) =>
+              onChange({ ...settings, generateCertificate: checked })
             }
           />
         </div>

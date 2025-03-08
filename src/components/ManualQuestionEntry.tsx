@@ -6,14 +6,17 @@ import { toast } from "sonner";
 import McqOptions from "./McqOptions";
 import ExpectedAnswerField from "./ExpectedAnswerField";
 import QuestionTypeSelect from "./QuestionTypeSelect";
+import NumericalAnswerField from "./NumericalAnswerField";
 
 interface Question {
   id: string;
   text: string;
-  type?: "mcq" | "shortanswer" | "longanswer";
+  type?: "mcq" | "shortanswer" | "longanswer" | "numerical";
   options?: { id: string; text: string }[];
   correctOption?: string;
   answer?: string;
+  numericalAnswer?: number;
+  tolerance?: number;
 }
 
 interface ManualQuestionEntryProps {
@@ -45,7 +48,11 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
     setQuestions(questions.filter((q) => q.id !== id));
   };
 
-  const updateQuestion = (id: string, field: keyof Question, value: string) => {
+  const updateQuestion = (
+    id: string,
+    field: keyof Question,
+    value: string | number
+  ) => {
     setQuestions(
       questions.map((q) => (q.id === id ? { ...q, [field]: value } : q))
     );
@@ -53,7 +60,7 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
 
   const updateQuestionType = (
     id: string,
-    type: "mcq" | "shortanswer" | "longanswer"
+    type: "mcq" | "shortanswer" | "longanswer" | "numerical"
   ) => {
     setQuestions(
       questions.map((q) => {
@@ -65,6 +72,8 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
               ...newQuestion,
               options: undefined,
               correctOption: undefined,
+              numericalAnswer: undefined,
+              tolerance: undefined,
               answer: "",
             };
           } else if (type === "mcq") {
@@ -72,7 +81,18 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
               ...newQuestion,
               options: [{ id: "1", text: "" }],
               correctOption: undefined,
+              numericalAnswer: undefined,
+              tolerance: undefined,
               answer: undefined,
+            };
+          } else if (type === "numerical") {
+            newQuestion = {
+              ...newQuestion,
+              options: undefined,
+              correctOption: undefined,
+              answer: undefined,
+              numericalAnswer: 0,
+              tolerance: 0,
             };
           }
 
@@ -212,6 +232,15 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
                 questionId={question.id}
                 answer={question.answer}
                 type="longanswer"
+                onChange={updateQuestion}
+              />
+            )}
+
+            {question.type === "numerical" && (
+              <NumericalAnswerField
+                questionId={question.id}
+                numericalAnswer={question.numericalAnswer}
+                tolerance={question.tolerance}
                 onChange={updateQuestion}
               />
             )}

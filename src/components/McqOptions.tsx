@@ -2,7 +2,7 @@ import React from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Circle, CheckCircle, Radio } from "lucide-react";
 import { toast } from "sonner";
 
 interface McqOptionsProps {
@@ -27,10 +27,22 @@ const McqOptions: React.FC<McqOptionsProps> = ({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label className="text-sm font-medium">Answer Options:</Label>
+        <Label className="text-sm font-medium">
+          Answer Options (Select One):
+        </Label>
         {options.map((option, optIndex) => (
           <div key={option.id} className="flex items-center space-x-2">
             <div className="flex-grow flex items-center space-x-2">
+              <div
+                className="cursor-pointer flex items-center justify-center"
+                onClick={() => setCorrectOption(questionId, option.id)}
+              >
+                {correctOption === option.id ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <Circle className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
               <Input
                 value={option.text}
                 onChange={(e) =>
@@ -49,35 +61,53 @@ const McqOptions: React.FC<McqOptionsProps> = ({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center space-x-1">
-              <input
-                type="radio"
-                id={`correct-${questionId}-${option.id}`}
-                name={`correct-${questionId}`}
-                checked={correctOption === option.id}
-                onChange={() => setCorrectOption(questionId, option.id)}
-                className="mr-1"
-              />
-              <Label
-                htmlFor={`correct-${questionId}-${option.id}`}
-                className="text-xs"
-              >
-                Correct
-              </Label>
-            </div>
           </div>
         ))}
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => addOption(questionId)}
-        className="text-xs bg-white/5 border-white/10 text-white hover:bg-white/10"
-      >
-        <Plus className="h-3 w-3 mr-1" />
-        Add Option
-      </Button>
+
+      <div className="flex space-x-2">
+        {options.length < 6 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => addOption(questionId)}
+            className="text-xs bg-white/5 border-white/10 text-white hover:bg-white/10"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Add Option
+          </Button>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            // Add an "All of the above" option
+            if (options.length < 6) {
+              const newOptionId = Date.now().toString();
+              updateOption(questionId, newOptionId, "All of the above");
+              addOption(questionId);
+            } else {
+              toast.error("Maximum 6 options allowed");
+            }
+          }}
+          className="text-xs bg-white/5 border-white/10 text-white hover:bg-white/10"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Add "All of the above"
+        </Button>
+      </div>
+
+      {correctOption ? (
+        <p className="text-xs text-green-400 mt-1">Correct answer selected</p>
+      ) : (
+        <p className="text-xs text-yellow-400 mt-1">
+          Select one option as the correct answer
+        </p>
+      )}
+
       <p className="text-xs text-gray-400 mt-1">
         Note: Negative marking will only apply to this question type
       </p>

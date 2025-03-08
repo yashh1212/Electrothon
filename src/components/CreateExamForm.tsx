@@ -40,6 +40,7 @@ interface ExamSettings {
   eyeTracking: boolean;
   faceDetection: boolean;
   displayResults: boolean;
+  generateCertificate: boolean;
 }
 
 interface ExamScheduling {
@@ -70,6 +71,7 @@ const CreateExamForm: React.FC<CreateExamFormProps> = ({ onExamCreate }) => {
       eyeTracking: false,
       faceDetection: false,
       displayResults: true,
+      generateCertificate: false,
     },
     modelAnswerSheet: undefined as string | undefined,
     syllabus: undefined as string | undefined,
@@ -151,6 +153,7 @@ const CreateExamForm: React.FC<CreateExamFormProps> = ({ onExamCreate }) => {
         eyeTracking: newExam.settings.eyeTracking,
         faceDetection: newExam.settings.faceDetection,
         displayResults: newExam.settings.displayResults,
+        generateCertificate: newExam.settings.generateCertificate,
       },
       modelAnswerSheet: newExam.modelAnswerSheet,
       syllabus: newExam.syllabus,
@@ -177,6 +180,7 @@ const CreateExamForm: React.FC<CreateExamFormProps> = ({ onExamCreate }) => {
         eyeTracking: false,
         faceDetection: false,
         displayResults: true,
+        generateCertificate: false,
       },
       modelAnswerSheet: undefined,
       syllabus: undefined,
