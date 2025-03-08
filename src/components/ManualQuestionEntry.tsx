@@ -1,17 +1,17 @@
-import React from "react";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { MinusCircle, Plus } from "lucide-react";
-import { toast } from "sonner";
-import McqOptions from "./McqOptions";
-import ExpectedAnswerField from "./ExpectedAnswerField";
-import QuestionTypeSelect from "./QuestionTypeSelect";
-import NumericalAnswerField from "./NumericalAnswerField";
+import React from 'react';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+import { MinusCircle, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import McqOptions from './McqOptions';
+import ExpectedAnswerField from './ExpectedAnswerField';
+import QuestionTypeSelect from './QuestionTypeSelect';
+import NumericalAnswerField from './NumericalAnswerField';
 
 interface Question {
   id: string;
   text: string;
-  type?: "mcq" | "shortanswer" | "longanswer" | "numerical";
+  type?: 'mcq' | 'shortanswer' | 'longanswer' | 'numerical';
   options?: { id: string; text: string }[];
   correctOption?: string;
   answer?: string;
@@ -24,78 +24,65 @@ interface ManualQuestionEntryProps {
   setQuestions: React.Dispatch<React.SetStateAction<Question[]>>;
 }
 
-const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
-  questions,
-  setQuestions,
-}) => {
+const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({ questions, setQuestions }) => {
   const addQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        id: Date.now().toString(),
-        text: "",
-        type: "mcq",
-        options: [{ id: "1", text: "" }],
-      },
-    ]);
+    setQuestions([...questions, { 
+      id: Date.now().toString(), 
+      text: '', 
+      type: 'mcq',
+      options: [{ id: '1', text: '' }]
+    }]);
   };
 
   const removeQuestion = (id: string) => {
     if (questions.length === 1) {
-      toast.error("You must have at least one question");
+      toast.error('You must have at least one question');
       return;
     }
-    setQuestions(questions.filter((q) => q.id !== id));
+    setQuestions(questions.filter(q => q.id !== id));
   };
 
-  const updateQuestion = (
-    id: string,
-    field: keyof Question,
-    value: string | number
-  ) => {
+  const updateQuestion = (id: string, field: keyof Question, value: string | number) => {
     setQuestions(
-      questions.map((q) => (q.id === id ? { ...q, [field]: value } : q))
+      questions.map(q => (q.id === id ? { ...q, [field]: value } : q))
     );
   };
 
-  const updateQuestionType = (
-    id: string,
-    type: "mcq" | "shortanswer" | "longanswer" | "numerical"
-  ) => {
+  const updateQuestionType = (id: string, type: 'mcq' | 'shortanswer' | 'longanswer' | 'numerical') => {
     setQuestions(
-      questions.map((q) => {
+      questions.map(q => {
         if (q.id === id) {
           let newQuestion: Question = { ...q, type };
-
-          if (type === "shortanswer" || type === "longanswer") {
-            newQuestion = {
-              ...newQuestion,
+          
+          if (type === 'shortanswer' || type === 'longanswer') {
+            newQuestion = { 
+              ...newQuestion, 
               options: undefined,
               correctOption: undefined,
               numericalAnswer: undefined,
               tolerance: undefined,
-              answer: "",
+              answer: ''
             };
-          } else if (type === "mcq") {
-            newQuestion = {
-              ...newQuestion,
-              options: [{ id: "1", text: "" }],
+          } else if (type === 'mcq') {
+            newQuestion = { 
+              ...newQuestion, 
+              options: [{ id: '1', text: '' }],
               correctOption: undefined,
               numericalAnswer: undefined,
               tolerance: undefined,
-              answer: undefined,
+              answer: undefined
             };
-          } else if (type === "numerical") {
+          } else if (type === 'numerical') {
             newQuestion = {
               ...newQuestion,
               options: undefined,
               correctOption: undefined,
               answer: undefined,
               numericalAnswer: 0,
-              tolerance: 0,
+              tolerance: 0
             };
           }
-
+          
           return newQuestion;
         }
         return q;
@@ -105,12 +92,9 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
 
   const addOption = (questionId: string) => {
     setQuestions(
-      questions.map((q) => {
+      questions.map(q => {
         if (q.id === questionId) {
-          const options = [
-            ...(q.options || []),
-            { id: Date.now().toString(), text: "" },
-          ];
+          const options = [...(q.options || []), { id: Date.now().toString(), text: '' }];
           return { ...q, options };
         }
         return q;
@@ -120,20 +104,15 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
 
   const removeOption = (questionId: string, optionId: string) => {
     setQuestions(
-      questions.map((q) => {
+      questions.map(q => {
         if (q.id === questionId) {
           if ((q.options || []).length <= 1) {
-            toast.error(
-              "A multiple choice question must have at least one option"
-            );
+            toast.error('A multiple choice question must have at least one option');
             return q;
           }
-
-          const options = (q.options || []).filter(
-            (opt) => opt.id !== optionId
-          );
-          const correctOption =
-            q.correctOption === optionId ? undefined : q.correctOption;
+          
+          const options = (q.options || []).filter(opt => opt.id !== optionId);
+          const correctOption = q.correctOption === optionId ? undefined : q.correctOption;
           return { ...q, options, correctOption };
         }
         return q;
@@ -143,9 +122,9 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
 
   const updateOption = (questionId: string, optionId: string, text: string) => {
     setQuestions(
-      questions.map((q) => {
+      questions.map(q => {
         if (q.id === questionId) {
-          const options = (q.options || []).map((opt) =>
+          const options = (q.options || []).map(opt => 
             opt.id === optionId ? { ...opt, text } : opt
           );
           return { ...q, options };
@@ -157,7 +136,7 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
 
   const setCorrectOption = (questionId: string, optionId: string) => {
     setQuestions(
-      questions.map((q) => {
+      questions.map(q => {
         if (q.id === questionId) {
           return { ...q, correctOption: optionId };
         }
@@ -169,13 +148,11 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
   return (
     <div className="space-y-4 mb-4 animate-fade-in">
       <h3 className="text-sm font-medium">Manual Question Entry</h3>
-      <p className="text-xs text-gray-400">
-        Add questions manually for your exam
-      </p>
-
+      <p className="text-xs text-gray-400">Add questions manually for your exam</p>
+      
       {questions.map((question, index) => (
-        <div
-          key={question.id}
+        <div 
+          key={question.id} 
           className="p-4 border rounded-xl bg-black/30 animate-scale-in"
         >
           <div className="flex items-center justify-between mb-2">
@@ -189,25 +166,23 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
               <MinusCircle className="h-4 w-4" />
             </Button>
           </div>
-
+          
           <div className="space-y-4">
-            <QuestionTypeSelect
-              questionId={question.id}
-              type={question.type || "mcq"}
-              onChange={updateQuestionType}
+            <QuestionTypeSelect 
+              questionId={question.id} 
+              type={question.type || 'mcq'} 
+              onChange={updateQuestionType} 
             />
-
+            
             <Textarea
               value={question.text}
-              onChange={(e) =>
-                updateQuestion(question.id, "text", e.target.value)
-              }
+              onChange={e => updateQuestion(question.id, 'text', e.target.value)}
               placeholder="Enter your question here..."
               className="min-h-[100px] resize-none bg-white/5 border-white/10 text-white"
             />
-
-            {question.type === "mcq" && (
-              <McqOptions
+            
+            {question.type === 'mcq' && (
+              <McqOptions 
                 questionId={question.id}
                 options={question.options || []}
                 correctOption={question.correctOption}
@@ -217,18 +192,18 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
                 setCorrectOption={setCorrectOption}
               />
             )}
-
-            {question.type === "shortanswer" && (
-              <ExpectedAnswerField
+            
+            {question.type === 'shortanswer' && (
+              <ExpectedAnswerField 
                 questionId={question.id}
                 answer={question.answer}
                 type="shortanswer"
                 onChange={updateQuestion}
               />
             )}
-
-            {question.type === "longanswer" && (
-              <ExpectedAnswerField
+            
+            {question.type === 'longanswer' && (
+              <ExpectedAnswerField 
                 questionId={question.id}
                 answer={question.answer}
                 type="longanswer"
@@ -236,7 +211,7 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
               />
             )}
 
-            {question.type === "numerical" && (
+            {question.type === 'numerical' && (
               <NumericalAnswerField
                 questionId={question.id}
                 numericalAnswer={question.numericalAnswer}
@@ -247,7 +222,7 @@ const ManualQuestionEntry: React.FC<ManualQuestionEntryProps> = ({
           </div>
         </div>
       ))}
-
+      
       <Button
         type="button"
         variant="outline"

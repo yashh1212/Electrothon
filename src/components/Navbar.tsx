@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../services/auth";
 import { Button } from "./ui/button";
 import { LogOut, User, FileText, LogIn } from "lucide-react";
+import AnimatedBackground from "../components/AnimatedBackground";
+
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout, login } = useAuth();
@@ -14,10 +16,10 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold text-lg group-hover:scale-110 transition-transform">
-              to
+              AE
             </div>
             <span className="text-xl font-semibold tracking-tight text-white">
-              todo
+              AEAI
             </span>
           </Link>
 

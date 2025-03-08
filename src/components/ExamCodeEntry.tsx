@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { isExamActive, getExamStatus } from "../services/scheduler";
 
 // Create an exam storage service
 const getStoredExams = () => {
@@ -36,7 +35,7 @@ const ExamCodeEntry: React.FC = () => {
       setIsLoading(false);
       if (exam) {
         // Check if exam is scheduled and not yet available
-        if (exam.scheduling && !isExamActive(exam.scheduling)) {
+        if (exam.scheduling && new Date(exam.scheduling.date) > new Date()) {
           const formattedDate = format(new Date(exam.scheduling.date), "PPP");
           const formattedTime = exam.scheduling.startTime;
 
