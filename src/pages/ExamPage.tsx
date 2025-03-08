@@ -18,6 +18,8 @@ import {
   Camera,
   XCircle,
   RotateCw,
+  Download,
+  Award,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AnimatedBackground from "@/components/AnimatedBackground";
@@ -30,6 +32,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import ExamCertificate from "@/components/ExamCertificate";
 
 interface Question {
   id: number;
@@ -43,6 +46,7 @@ interface ExamSettings {
   negativeMarkingValue: number;
   eyeTracking: boolean;
   faceDetection: boolean;
+  generateCertificate: boolean;
 }
 
 const ExamPage: React.FC = () => {
@@ -63,67 +67,70 @@ const ExamPage: React.FC = () => {
   const [requestingPermissions, setRequestingPermissions] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const certificateRef = useRef<HTMLDivElement>(null);
+  const [studentName, setStudentName] = useState("John Doe"); // Added student name for certificate
 
-  // Mock exam data - in a real app this would come from an API
+  // Sample exam data with certificate generation enabled
   const [examData, setExamData] = useState<{
     title: string;
     description: string;
     questions: Question[];
     settings: ExamSettings;
   }>({
-    title: "Sample Examination",
-    description: `Exam Code: ${examCode}`,
+    title: "Web Development Certification Exam",
+    description: `Exam Code: ${examCode || "CERT-2023"}`,
     settings: {
-      negativeMarking: true,
-      negativeMarkingValue: 0.25,
-      eyeTracking: true,
-      faceDetection: true,
+      negativeMarking: false,
+      negativeMarkingValue: 0,
+      eyeTracking: false,
+      faceDetection: false,
+      generateCertificate: true,
     },
     questions: [
       {
         id: 1,
-        text: "What is the capital of France?",
-        options: ["London", "Berlin", "Paris", "Madrid"],
+        text: "Which language is primarily used for styling web pages?",
+        options: ["HTML", "JavaScript", "CSS", "Python"],
         correctAnswer: 2,
       },
       {
         id: 2,
-        text: "Which of the following is a JavaScript framework?",
-        options: ["Python", "React", "Java", "C++"],
-        correctAnswer: 1,
-      },
-      {
-        id: 3,
-        text: "What does HTML stand for?",
+        text: "What does DOM stand for in web development?",
         options: [
-          "Hyper Text Markup Language",
-          "High Tech Modern Language",
-          "Hyper Transfer Markup Language",
-          "Home Tool Markup Language",
+          "Document Object Model",
+          "Digital Ordinance Management",
+          "Design Object Mechanism",
+          "Data Object Model",
         ],
         correctAnswer: 0,
       },
       {
+        id: 3,
+        text: "Which of the following is a JavaScript framework?",
+        options: ["Django", "Flask", "Ruby on Rails", "React"],
+        correctAnswer: 3,
+      },
+      {
         id: 4,
-        text: "Which symbol is used for single line comments in JavaScript?",
-        options: ["//", "/*", "#", "<!--"],
+        text: "What does API stand for?",
+        options: [
+          "Application Programming Interface",
+          "Application Process Integration",
+          "Automated Program Interaction",
+          "Advanced Programming Interface",
+        ],
         correctAnswer: 0,
       },
       {
         id: 5,
-        text: "What is the correct way to create a function in JavaScript?",
-        options: [
-          "function = myFunction()",
-          "function:myFunction()",
-          "function myFunction()",
-          "create myFunction()",
-        ],
-        correctAnswer: 2,
+        text: "Which of these is a version control system?",
+        options: ["Docker", "Git", "Kubernetes", "Jenkins"],
+        correctAnswer: 1,
       },
     ],
   });
 
-  // Request camera permissions if face detection or eye tracking is enabled
   useEffect(() => {
     const requestPermissions = async () => {
       if (examData.settings.faceDetection || examData.settings.eyeTracking) {
@@ -141,7 +148,6 @@ const ExamPage: React.FC = () => {
           setPermissionsGranted(true);
           toast.success("Camera access granted");
 
-          // Simulate security monitoring
           const securityCheck = setInterval(() => {
             if (examData.settings.eyeTracking && Math.random() > 0.9) {
               setSecurityWarnings((prev) => ({ ...prev, eye: true }));
@@ -150,7 +156,6 @@ const ExamPage: React.FC = () => {
                 id: "eye-warning",
               });
 
-              // Auto-reset after 5 seconds
               setTimeout(() => {
                 setSecurityWarnings((prev) => ({ ...prev, eye: false }));
               }, 5000);
@@ -163,12 +168,11 @@ const ExamPage: React.FC = () => {
                 id: "face-warning",
               });
 
-              // Auto-reset after 5 seconds
               setTimeout(() => {
                 setSecurityWarnings((prev) => ({ ...prev, face: false }));
               }, 5000);
             }
-          }, 15000); // Check every 15 seconds
+          }, 15000);
 
           return () => {
             clearInterval(securityCheck);
@@ -197,7 +201,6 @@ const ExamPage: React.FC = () => {
     };
   }, [examData.settings.eyeTracking, examData.settings.faceDetection]);
 
-  // Timer effect
   useEffect(() => {
     if (timeLeft > 0 && !examCompleted) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -207,12 +210,10 @@ const ExamPage: React.FC = () => {
     }
   }, [timeLeft, examCompleted]);
 
-  // Initialize answers array
   useEffect(() => {
     setAnswers(new Array(examData.questions.length).fill(-1));
   }, [examData.questions.length]);
 
-  // Format time as mm:ss
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -247,12 +248,10 @@ const ExamPage: React.FC = () => {
       if (answers[index] === question.correctAnswer) {
         correct++;
       } else if (answers[index] >= 0) {
-        // Only count explicitly answered questions as incorrect
         incorrect++;
       }
     });
 
-    // Apply negative marking if enabled
     let finalScore = correct;
     if (examData.settings.negativeMarking) {
       finalScore = Math.max(
@@ -280,19 +279,24 @@ const ExamPage: React.FC = () => {
   const handleSubmitExam = () => {
     setIsSubmitting(true);
 
-    // Simulate API call
     setTimeout(() => {
       const result = calculateScore();
       setScore(result.percentage);
       setExamCompleted(true);
       setIsSubmitting(false);
 
-      // Stop video stream if active
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
 
       toast.success("Exam submitted successfully!");
+
+      // Auto-show certificate for the sample exam
+      if (examData.settings.generateCertificate && result.percentage >= 60) {
+        setTimeout(() => {
+          setShowCertificate(true);
+        }, 1500);
+      }
     }, 1500);
   };
 
@@ -330,7 +334,44 @@ const ExamPage: React.FC = () => {
     }
   };
 
-  // Show camera permission screen if required but not granted
+  const handleDownloadCertificate = async () => {
+    try {
+      if (!certificateRef.current) return;
+
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: null,
+      });
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          toast.error("Failed to generate certificate");
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${examData.title.replace(
+          /\s+/g,
+          "_"
+        )}_Certificate.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast.success("Certificate downloaded successfully");
+      }, "image/png");
+    } catch (error) {
+      console.error("Error generating certificate:", error);
+      toast.error("Failed to generate certificate");
+    }
+  };
+
   if (
     (examData.settings.eyeTracking || examData.settings.faceDetection) &&
     !permissionsGranted &&
@@ -410,7 +451,6 @@ const ExamPage: React.FC = () => {
           <div className="max-w-4xl mx-auto">
             {!examCompleted ? (
               <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
-                {/* Security warnings */}
                 {(securityWarnings.eye || securityWarnings.face) && (
                   <div className="bg-red-900/30 border-b border-red-500/30 p-3 text-center animate-pulse">
                     <div className="flex items-center justify-center gap-2 text-red-300">
@@ -469,7 +509,6 @@ const ExamPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-6">
-                  {/* Security camera feed */}
                   {(examData.settings.eyeTracking ||
                     examData.settings.faceDetection) &&
                     permissionsGranted && (
@@ -659,6 +698,18 @@ const ExamPage: React.FC = () => {
                       </li>
                     </ul>
                   </div>
+
+                  {score >= 60 && examData.settings.generateCertificate && (
+                    <div className="mt-6 w-full max-w-md">
+                      <Button
+                        onClick={() => setShowCertificate(true)}
+                        className="w-full bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white border-0"
+                      >
+                        <Award className="w-4 h-4 mr-2" />
+                        View Certificate
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
 
                 <CardFooter className="justify-center border-t border-white/10 pt-4">
@@ -675,6 +726,40 @@ const ExamPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
+        <DialogContent className="bg-gray-900 border border-gray-800 max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Your Certificate</DialogTitle>
+            <DialogDescription>
+              Congratulations on completing the exam! You can download your
+              certificate.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-4 overflow-auto max-h-[70vh]">
+            <div ref={certificateRef} className="w-full p-4">
+              <ExamCertificate
+                studentName={studentName}
+                examTitle={examData.title}
+                score={score}
+                date={new Date().toLocaleDateString()}
+                examCode={examCode || "CERT-2023"}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleDownloadCertificate}
+              className="bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white border-0"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download Certificate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="bg-gray-900 border border-gray-800">

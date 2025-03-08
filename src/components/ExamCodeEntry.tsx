@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { isExamActive, getExamStatus } from "../services/scheduler";
+import StudentRegistration from "./StudentRegistration";
 
 // Create an exam storage service
 const getStoredExams = () => {
@@ -15,6 +17,8 @@ const getStoredExams = () => {
 const ExamCodeEntry: React.FC = () => {
   const [examCode, setExamCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [validExam, setValidExam] = useState<any>(null);
+  const [showRegistration, setShowRegistration] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +39,7 @@ const ExamCodeEntry: React.FC = () => {
       setIsLoading(false);
       if (exam) {
         // Check if exam is scheduled and not yet available
-        if (exam.scheduling && new Date(exam.scheduling.date) > new Date()) {
+        if (exam.scheduling && !isExamActive(exam.scheduling)) {
           const formattedDate = format(new Date(exam.scheduling.date), "PPP");
           const formattedTime = exam.scheduling.startTime;
 
@@ -50,12 +54,24 @@ const ExamCodeEntry: React.FC = () => {
         }
 
         toast.success(`Exam code ${examCode} is valid`);
-        navigate(`/exam/${examCode}`);
+        setValidExam(exam);
+        setShowRegistration(true);
       } else {
         toast.error(`Exam code ${examCode} is not valid`);
       }
     }, 1000);
   };
+
+  const handleBackToCodeEntry = () => {
+    setShowRegistration(false);
+    setValidExam(null);
+  };
+
+  if (showRegistration && validExam) {
+    return (
+      <StudentRegistration examCode={examCode} onBack={handleBackToCodeEntry} />
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto animate-scale-in">
