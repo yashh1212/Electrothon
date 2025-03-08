@@ -21,6 +21,8 @@ import {
   Download,
   Award,
   Layers,
+  Video,
+  VideoOff,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AnimatedBackground from "@/components/AnimatedBackground";
@@ -40,6 +42,7 @@ import {
   STORAGE_KEYS,
 } from "@/services/storage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { format } from "date-fns";
 
 interface Question {
   id: string;
@@ -82,7 +85,7 @@ interface ExamResult {
   totalQuestions: number;
   correctAnswers: number;
   tabSwitches: number;
-  completedAt: Date;
+  completedAt: string; // Changed from Date to string to fix the type error
   passed: boolean;
 }
 
@@ -113,6 +116,7 @@ const ExamPage: React.FC = () => {
   const [showSecurityViolationDialog, setShowSecurityViolationDialog] =
     useState(false);
   const MAX_TAB_SWITCHES = 3;
+  const [showCameraFeed, setShowCameraFeed] = useState(true);
 
   const [examData, setExamData] = useState<{
     title: string;
@@ -302,7 +306,11 @@ const ExamPage: React.FC = () => {
         try {
           setRequestingPermissions(true);
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: {
+              width: { ideal: 320 },
+              height: { ideal: 240 },
+              facingMode: "user",
+            },
           });
           streamRef.current = stream;
 
@@ -478,7 +486,7 @@ const ExamPage: React.FC = () => {
           totalQuestions: result.total,
           correctAnswers: result.score,
           tabSwitches: tabSwitchCount,
-          completedAt: new Date(),
+          completedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
           passed: result.percentage >= 60,
         };
 
@@ -579,6 +587,10 @@ const ExamPage: React.FC = () => {
   const handleSecurityViolation = () => {
     setShowSecurityViolationDialog(false);
     handleSubmitExam(true);
+  };
+
+  const toggleCameraFeed = () => {
+    setShowCameraFeed(!showCameraFeed);
   };
 
   if (
@@ -716,6 +728,78 @@ const ExamPage: React.FC = () => {
                   </div>
                 )}
 
+                {(examData.settings.eyeTracking ||
+                  examData.settings.faceDetection) &&
+                  permissionsGranted && (
+                    <div className="fixed bottom-4 right-4 z-50">
+                      <div className="relative group">
+                        <div
+                          className={`transition-all duration-300 ${
+                            showCameraFeed
+                              ? "opacity-100 scale-100"
+                              : "opacity-0 scale-0"
+                          }`}
+                        >
+                          <div className="relative bg-black/50 backdrop-blur-md rounded-lg overflow-hidden border border-white/20 shadow-lg p-1">
+                            <div className="absolute top-2 right-2 z-10 flex space-x-1">
+                              {examData.settings.eyeTracking && (
+                                <div
+                                  className={`h-3 w-3 rounded-full ${
+                                    securityWarnings.eye
+                                      ? "bg-red-500"
+                                      : "bg-green-500"
+                                  }`}
+                                ></div>
+                              )}
+                              {examData.settings.faceDetection && (
+                                <div
+                                  className={`h-3 w-3 rounded-full ${
+                                    securityWarnings.face
+                                      ? "bg-red-500"
+                                      : "bg-green-500"
+                                  }`}
+                                ></div>
+                              )}
+                              {examData.settings.preventTabSwitching && (
+                                <div
+                                  className={`h-3 w-3 rounded-full ${
+                                    securityWarnings.tabSwitch
+                                      ? "bg-red-500"
+                                      : "bg-green-500"
+                                  }`}
+                                ></div>
+                              )}
+                            </div>
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              muted
+                              playsInline
+                              className="w-48 h-36 object-cover rounded-md"
+                            />
+                            <div className="bg-black/60 text-white text-xs py-1 text-center">
+                              Live Camera Feed
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={toggleCameraFeed}
+                          className={`absolute bottom-2 -left-12 bg-white/10 hover:bg-white/20 p-2 rounded-full backdrop-blur-sm transition-all duration-200 border border-white/10 ${
+                            !showCameraFeed &&
+                            "bg-purple-600/20 border-purple-500/50"
+                          }`}
+                        >
+                          {showCameraFeed ? (
+                            <VideoOff className="h-5 w-5 text-white" />
+                          ) : (
+                            <Video className="h-5 w-5 text-white" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                 {examData.settings.preventTabSwitching && (
                   <Alert className="bg-amber-900/30 border-amber-500/30 mb-2">
                     <Layers className="h-4 w-4 text-amber-400" />
@@ -770,51 +854,6 @@ const ExamPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-6">
-                  {(examData.settings.eyeTracking ||
-                    examData.settings.faceDetection) &&
-                    permissionsGranted && (
-                      <div className="mb-4 flex justify-end">
-                        <div className="relative">
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            className="w-32 h-24 object-cover rounded-lg border border-white/20 shadow-lg"
-                          />
-                          <div className="absolute top-1 right-1 flex gap-1">
-                            {examData.settings.eyeTracking && (
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  securityWarnings.eye
-                                    ? "bg-red-500"
-                                    : "bg-green-500"
-                                }`}
-                              ></div>
-                            )}
-                            {examData.settings.faceDetection && (
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  securityWarnings.face
-                                    ? "bg-red-500"
-                                    : "bg-green-500"
-                                }`}
-                              ></div>
-                            )}
-                            {examData.settings.preventTabSwitching && (
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  securityWarnings.tabSwitch
-                                    ? "bg-red-500"
-                                    : "bg-green-500"
-                                }`}
-                              ></div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                   <div className="mb-8">
                     <h3 className="text-xl text-white font-medium mb-4">
                       {examData.questions[currentQuestion].text}
@@ -910,208 +949,170 @@ const ExamPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-medium text-white mb-2">
-                      {score >= 70 ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <CheckCircle className="text-green-500" />
+                  <div className="w-full max-w-md space-y-6 text-white">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/10 p-4 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-white">
+                          {calculateScore().score}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Correct Answers
+                        </div>
+                      </div>
+                      <div className="bg-white/10 p-4 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-white">
+                          {calculateScore().incorrect}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Incorrect Answers
+                        </div>
+                      </div>
+                      {examData.settings.negativeMarking && (
+                        <div className="bg-white/10 p-4 rounded-lg text-center">
+                          <div className="text-2xl font-bold text-white">
+                            {calculateScore().negativeMarks}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Negative Marks
+                          </div>
+                        </div>
+                      )}
+                      <div className="bg-white/10 p-4 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-white">
+                          {calculateScore().tabSwitches}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          Tab Switches
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 p-5 rounded-xl text-center">
+                      <div className="text-lg font-medium mb-2">
+                        Final Result
+                      </div>
+                      {score >= 60 ? (
+                        <div className="flex items-center justify-center gap-2 text-green-400">
+                          <CheckCircle />
                           <span>Passed</span>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          <AlertCircle className="text-orange-500" />
-                          <span>Needs Improvement</span>
+                        <div className="flex items-center justify-center gap-2 text-red-400">
+                          <AlertCircle />
+                          <span>Failed</span>
                         </div>
                       )}
-                    </h3>
-                    <p className="text-gray-300">
-                      You answered {calculateScore().score} out of{" "}
-                      {calculateScore().total} questions correctly
-                    </p>
-                  </div>
-
-                  <div className="w-full max-w-md p-4 rounded-lg bg-white/5 border border-white/10">
-                    <h4 className="text-white font-medium mb-3">
-                      Performance Summary
-                    </h4>
-                    <ul className="space-y-2">
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Total Questions</span>
-                        <span className="text-white font-medium">
-                          {calculateScore().total}
-                        </span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Correct Answers</span>
-                        <span className="text-green-400 font-medium">
-                          {calculateScore().score}
-                        </span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Wrong Answers</span>
-                        <span className="text-red-400 font-medium">
-                          {calculateScore().incorrect}
-                        </span>
-                      </li>
-                      {examData.settings.negativeMarking &&
-                        calculateScore().negativeMarks > 0 && (
-                          <li className="flex justify-between">
-                            <span className="text-gray-300">
-                              Negative Marking Deduction
-                            </span>
-                            <span className="text-red-400 font-medium">
-                              -{calculateScore().negativeMarks.toFixed(2)}
-                            </span>
-                          </li>
-                        )}
-                      {examData.settings.preventTabSwitching && (
-                        <li className="flex justify-between">
-                          <span className="text-gray-300">
-                            Tab Switches Detected
-                          </span>
-                          <span
-                            className={`font-medium ${
-                              tabSwitchCount > 0
-                                ? "text-red-400"
-                                : "text-green-400"
-                            }`}
-                          >
-                            {tabSwitchCount}
-                          </span>
-                        </li>
-                      )}
-                      <li className="flex justify-between border-t border-white/10 pt-2 mt-2">
-                        <span className="text-gray-300">Final Score</span>
-                        <span className="text-white font-medium">
-                          {calculateScore().finalScore.toFixed(2)}
-                        </span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Score Percentage</span>
-                        <span className="text-white font-medium">{score}%</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {score >= 60 && examData.settings.generateCertificate && (
-                    <div className="mt-6 w-full max-w-md">
-                      <Button
-                        onClick={() => setShowCertificate(true)}
-                        className="w-full bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white border-0"
-                      >
-                        <Award className="w-4 h-4 mr-2" />
-                        View Certificate
-                      </Button>
                     </div>
-                  )}
-                </CardContent>
 
-                <CardFooter className="justify-center border-t border-white/10 pt-4">
-                  <Button
-                    onClick={handleExitExam}
-                    className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Return to Home
-                  </Button>
-                </CardFooter>
+                    {showCertificate && (
+                      <div className="mt-8">
+                        <div ref={certificateRef} className="relative p-4">
+                          <ExamCertificate
+                            studentName={studentName}
+                            examTitle={examData.title}
+                            score={score}
+                            date={new Date()}
+                          />
+                        </div>
+                        <Button
+                          onClick={handleDownloadCertificate}
+                          className="w-full bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white mt-4"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Certificate
+                        </Button>
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={handleExitExam}
+                      variant="outline"
+                      className="w-full mt-6 border-white/20 text-gray-300 hover:bg-white/10"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Return to Dashboard
+                    </Button>
+                  </div>
+                </CardContent>
               </Card>
             )}
+
+            <Dialog
+              open={showConfirmDialog}
+              onOpenChange={setShowConfirmDialog}
+            >
+              <DialogContent className="bg-black/95 border border-white/10">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Submit Exam</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Are you sure you want to submit your exam? You won't be able
+                    to change your answers after submission.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="text-sm text-gray-300 my-2">
+                  <p>
+                    You've answered{" "}
+                    <span className="font-medium text-white">
+                      {answers.filter((a) => a >= 0).length}
+                    </span>{" "}
+                    out of{" "}
+                    <span className="font-medium text-white">
+                      {examData.questions.length}
+                    </span>{" "}
+                    questions.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowConfirmDialog(false)}
+                    className="border-white/20 text-gray-300 hover:bg-white/10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmSubmit}
+                    className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
+                  >
+                    Submit Exam
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={showSecurityViolationDialog}
+              onOpenChange={setShowSecurityViolationDialog}
+            >
+              <DialogContent className="bg-black/95 border border-red-500/30">
+                <DialogHeader>
+                  <DialogTitle className="text-red-400">
+                    Security Violation Detected
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Multiple tab switching attempts have been detected. This is
+                    against the exam rules.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="text-sm text-gray-300 my-2">
+                  <p>
+                    Your exam will be submitted automatically with your current
+                    answers. This incident will be recorded.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={handleSecurityViolation}
+                    className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white border-0"
+                  >
+                    End Exam
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
-
-      <Dialog
-        open={showSecurityViolationDialog}
-        onOpenChange={setShowSecurityViolationDialog}
-      >
-        <DialogContent className="bg-gray-900 border border-red-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              Security Violation Detected
-            </DialogTitle>
-            <DialogDescription>
-              You have switched tabs or lost focus {MAX_TAB_SWITCHES} times,
-              which is not allowed during this exam. The exam will now end and
-              your current answers will be submitted.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={handleSecurityViolation}
-              className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white border-0"
-            >
-              End Exam
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
-        <DialogContent className="bg-gray-900 border border-gray-800 max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-white">Your Certificate</DialogTitle>
-            <DialogDescription>
-              Congratulations on completing the exam! You can download your
-              certificate.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="my-4 overflow-auto max-h-[70vh]">
-            <div ref={certificateRef} className="w-full p-4">
-              <ExamCertificate
-                studentName={studentName}
-                examTitle={examData.title}
-                score={score}
-                date={new Date().toLocaleDateString()}
-                examCode={examCode || "CERT-2023"}
-                institution={studentInfo?.institution}
-                department={studentInfo?.department}
-                program={studentInfo?.program}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              onClick={handleDownloadCertificate}
-              className="bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white border-0"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download Certificate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="bg-gray-900 border border-gray-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Submit Exam</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to submit your exam? You won't be able to
-              change your answers after submission.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setShowConfirmDialog(false);
-                handleSubmitExam();
-              }}
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
-            >
-              Yes, Submit Exam
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
