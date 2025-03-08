@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -9,7 +9,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  EyeOff,
+  Camera,
+  XCircle,
+  RotateCw,
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import HexagonGrid from "@/components/HexagonGrid";
@@ -29,6 +38,13 @@ interface Question {
   correctAnswer?: number;
 }
 
+interface ExamSettings {
+  negativeMarking: boolean;
+  negativeMarkingValue: number;
+  eyeTracking: boolean;
+  faceDetection: boolean;
+}
+
 const ExamPage: React.FC = () => {
   const { examCode } = useParams();
   const navigate = useNavigate();
@@ -39,15 +55,30 @@ const ExamPage: React.FC = () => {
   const [examCompleted, setExamCompleted] = useState(false);
   const [score, setScore] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [securityWarnings, setSecurityWarnings] = useState<{
+    eye: boolean;
+    face: boolean;
+  }>({ eye: false, face: false });
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [requestingPermissions, setRequestingPermissions] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Mock exam data - in a real app this would come from an API
   const [examData, setExamData] = useState<{
     title: string;
     description: string;
     questions: Question[];
+    settings: ExamSettings;
   }>({
     title: "Sample Examination",
     description: `Exam Code: ${examCode}`,
+    settings: {
+      negativeMarking: true,
+      negativeMarkingValue: 0.25,
+      eyeTracking: true,
+      faceDetection: true,
+    },
     questions: [
       {
         id: 1,
@@ -91,6 +122,80 @@ const ExamPage: React.FC = () => {
       },
     ],
   });
+
+  // Request camera permissions if face detection or eye tracking is enabled
+  useEffect(() => {
+    const requestPermissions = async () => {
+      if (examData.settings.faceDetection || examData.settings.eyeTracking) {
+        try {
+          setRequestingPermissions(true);
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          streamRef.current = stream;
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+
+          setPermissionsGranted(true);
+          toast.success("Camera access granted");
+
+          // Simulate security monitoring
+          const securityCheck = setInterval(() => {
+            if (examData.settings.eyeTracking && Math.random() > 0.9) {
+              setSecurityWarnings((prev) => ({ ...prev, eye: true }));
+              toast.warning("Eye movement detected outside exam area", {
+                description: "Please focus on the exam",
+                id: "eye-warning",
+              });
+
+              // Auto-reset after 5 seconds
+              setTimeout(() => {
+                setSecurityWarnings((prev) => ({ ...prev, eye: false }));
+              }, 5000);
+            }
+
+            if (examData.settings.faceDetection && Math.random() > 0.95) {
+              setSecurityWarnings((prev) => ({ ...prev, face: true }));
+              toast.warning("Face not clearly visible", {
+                description: "Please ensure your face is visible",
+                id: "face-warning",
+              });
+
+              // Auto-reset after 5 seconds
+              setTimeout(() => {
+                setSecurityWarnings((prev) => ({ ...prev, face: false }));
+              }, 5000);
+            }
+          }, 15000); // Check every 15 seconds
+
+          return () => {
+            clearInterval(securityCheck);
+            if (streamRef.current) {
+              streamRef.current.getTracks().forEach((track) => track.stop());
+            }
+          };
+        } catch (error) {
+          console.error("Error accessing camera:", error);
+          toast.error("Camera access denied", {
+            description: "Unable to enable security features",
+          });
+          setPermissionsGranted(false);
+        } finally {
+          setRequestingPermissions(false);
+        }
+      }
+    };
+
+    requestPermissions();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [examData.settings.eyeTracking, examData.settings.faceDetection]);
 
   // Timer effect
   useEffect(() => {
@@ -136,15 +241,39 @@ const ExamPage: React.FC = () => {
 
   const calculateScore = () => {
     let correct = 0;
+    let incorrect = 0;
+
     examData.questions.forEach((question, index) => {
       if (answers[index] === question.correctAnswer) {
         correct++;
+      } else if (answers[index] >= 0) {
+        // Only count explicitly answered questions as incorrect
+        incorrect++;
       }
     });
+
+    // Apply negative marking if enabled
+    let finalScore = correct;
+    if (examData.settings.negativeMarking) {
+      finalScore = Math.max(
+        0,
+        correct - incorrect * examData.settings.negativeMarkingValue
+      );
+    }
+
+    const percentage = Math.round(
+      (finalScore / examData.questions.length) * 100
+    );
+
     return {
       score: correct,
+      incorrect,
+      negativeMarks: examData.settings.negativeMarking
+        ? incorrect * examData.settings.negativeMarkingValue
+        : 0,
       total: examData.questions.length,
-      percentage: Math.round((correct / examData.questions.length) * 100),
+      percentage,
+      finalScore,
     };
   };
 
@@ -157,6 +286,11 @@ const ExamPage: React.FC = () => {
       setScore(result.percentage);
       setExamCompleted(true);
       setIsSubmitting(false);
+
+      // Stop video stream if active
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
 
       toast.success("Exam submitted successfully!");
     }, 1500);
@@ -171,6 +305,99 @@ const ExamPage: React.FC = () => {
     navigate("/");
   };
 
+  const handleRetryPermissions = async () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+
+    try {
+      setRequestingPermissions(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+
+      setPermissionsGranted(true);
+      toast.success("Camera access granted");
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      toast.error("Camera access denied");
+      setPermissionsGranted(false);
+    } finally {
+      setRequestingPermissions(false);
+    }
+  };
+
+  // Show camera permission screen if required but not granted
+  if (
+    (examData.settings.eyeTracking || examData.settings.faceDetection) &&
+    !permissionsGranted &&
+    !examCompleted &&
+    !requestingPermissions
+  ) {
+    return (
+      <div className="relative min-h-screen bg-black overflow-hidden">
+        <AnimatedBackground />
+        <HexagonGrid />
+
+        <div className="relative z-10">
+          <Navbar />
+
+          <div className="container mx-auto px-4 pt-32 pb-16">
+            <div className="max-w-md mx-auto">
+              <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl font-bold text-white mb-2">
+                    Camera Access Required
+                  </CardTitle>
+                  <p className="text-gray-300">
+                    This exam requires camera access for security monitoring
+                  </p>
+                </CardHeader>
+
+                <CardContent className="flex flex-col items-center pt-6">
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6 bg-purple-500/20 border-2 border-purple-500">
+                    <Camera className="w-12 h-12 text-purple-300" />
+                  </div>
+
+                  <div className="text-center mb-8 space-y-4">
+                    <p className="text-white">
+                      This exam uses the following security features:
+                    </p>
+                    <div className="space-y-2">
+                      {examData.settings.faceDetection && (
+                        <div className="flex items-center gap-2 bg-white/5 p-3 rounded-lg">
+                          <Camera className="text-blue-400 w-5 h-5" />
+                          <span className="text-gray-200">Face Detection</span>
+                        </div>
+                      )}
+                      {examData.settings.eyeTracking && (
+                        <div className="flex items-center gap-2 bg-white/5 p-3 rounded-lg">
+                          <EyeOff className="text-yellow-400 w-5 h-5" />
+                          <span className="text-gray-200">Eye Tracking</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleRetryPermissions}
+                    className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0 w-full"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Grant Camera Access
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
       <AnimatedBackground />
@@ -183,6 +410,22 @@ const ExamPage: React.FC = () => {
           <div className="max-w-4xl mx-auto">
             {!examCompleted ? (
               <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
+                {/* Security warnings */}
+                {(securityWarnings.eye || securityWarnings.face) && (
+                  <div className="bg-red-900/30 border-b border-red-500/30 p-3 text-center animate-pulse">
+                    <div className="flex items-center justify-center gap-2 text-red-300">
+                      <XCircle className="w-5 h-5" />
+                      <span className="font-medium">Security Warning</span>
+                    </div>
+                    <p className="text-sm text-red-200 mt-1">
+                      {securityWarnings.eye &&
+                        "Eye movement detected outside exam area. "}
+                      {securityWarnings.face && "Face not clearly visible. "}
+                      Please correct this to continue.
+                    </p>
+                  </div>
+                )}
+
                 <CardHeader className="border-b border-white/10">
                   <div className="flex justify-between items-center">
                     <div>
@@ -226,6 +469,43 @@ const ExamPage: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="pt-6">
+                  {/* Security camera feed */}
+                  {(examData.settings.eyeTracking ||
+                    examData.settings.faceDetection) &&
+                    permissionsGranted && (
+                      <div className="mb-4 flex justify-end">
+                        <div className="relative">
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            muted
+                            playsInline
+                            className="w-32 h-24 object-cover rounded-lg border border-white/20 shadow-lg"
+                          />
+                          <div className="absolute top-1 right-1 flex gap-1">
+                            {examData.settings.eyeTracking && (
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  securityWarnings.eye
+                                    ? "bg-red-500"
+                                    : "bg-green-500"
+                                }`}
+                              ></div>
+                            )}
+                            {examData.settings.faceDetection && (
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  securityWarnings.face
+                                    ? "bg-red-500"
+                                    : "bg-green-500"
+                                }`}
+                              ></div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                   <div className="mb-8">
                     <h3 className="text-xl text-white font-medium mb-4">
                       {examData.questions[currentQuestion].text}
@@ -353,7 +633,24 @@ const ExamPage: React.FC = () => {
                       <li className="flex justify-between">
                         <span className="text-gray-300">Wrong Answers</span>
                         <span className="text-red-400 font-medium">
-                          {calculateScore().total - calculateScore().score}
+                          {calculateScore().incorrect}
+                        </span>
+                      </li>
+                      {examData.settings.negativeMarking &&
+                        calculateScore().negativeMarks > 0 && (
+                          <li className="flex justify-between">
+                            <span className="text-gray-300">
+                              Negative Marking Deduction
+                            </span>
+                            <span className="text-red-400 font-medium">
+                              -{calculateScore().negativeMarks.toFixed(2)}
+                            </span>
+                          </li>
+                        )}
+                      <li className="flex justify-between border-t border-white/10 pt-2 mt-2">
+                        <span className="text-gray-300">Final Score</span>
+                        <span className="text-white font-medium">
+                          {calculateScore().finalScore.toFixed(2)}
                         </span>
                       </li>
                       <li className="flex justify-between">

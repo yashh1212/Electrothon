@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { File, FileText, Upload, Brain, Code, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
-
 const Dashboard: React.FC = () => {
   const { isAuthenticated, loading, user } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
