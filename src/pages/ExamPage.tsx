@@ -20,6 +20,7 @@ import {
   RotateCw,
   Download,
   Award,
+  Layers,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AnimatedBackground from "@/components/AnimatedBackground";
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import ExamCertificate from "@/components/ExamCertificate";
 import { getStorageItem, STORAGE_KEYS } from "@/services/storage";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Question {
   id: string;
@@ -52,6 +54,7 @@ interface ExamSettings {
   eyeTracking: boolean;
   faceDetection: boolean;
   generateCertificate: boolean;
+  preventTabSwitching?: boolean;
   displayResults?: boolean;
 }
 
@@ -78,9 +81,11 @@ const ExamPage: React.FC = () => {
   const [securityWarnings, setSecurityWarnings] = useState<{
     eye: boolean;
     face: boolean;
-  }>({ eye: false, face: false });
+    tabSwitch: boolean;
+  }>({ eye: false, face: false, tabSwitch: false });
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [requestingPermissions, setRequestingPermissions] = useState(false);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [showCertificate, setShowCertificate] = useState(false);
@@ -103,6 +108,7 @@ const ExamPage: React.FC = () => {
       eyeTracking: false,
       faceDetection: false,
       generateCertificate: true,
+      preventTabSwitching: true,
     },
     questions: [
       {
@@ -186,6 +192,8 @@ const ExamPage: React.FC = () => {
                 faceDetection: foundExam.settings?.faceDetection || false,
                 generateCertificate:
                   foundExam.settings?.generateCertificate || true,
+                preventTabSwitching:
+                  foundExam.settings?.preventTabSwitching !== false, // Default to true
               },
               questions:
                 foundExam.questions.filter((q) => q.type === "mcq") || [],
@@ -213,6 +221,54 @@ const ExamPage: React.FC = () => {
       }
     }
   }, [examCode]);
+
+  // Add tab visibility change detection
+  useEffect(() => {
+    if (!examData.settings.preventTabSwitching || examCompleted) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        setSecurityWarnings((prev) => ({ ...prev, tabSwitch: true }));
+        setTabSwitchCount((prev) => prev + 1);
+
+        toast.warning("Tab switching detected", {
+          description: "Switching tabs during an exam is not allowed",
+          id: "tab-switch-warning",
+        });
+
+        // Reset the warning after 5 seconds
+        setTimeout(() => {
+          setSecurityWarnings((prev) => ({ ...prev, tabSwitch: false }));
+        }, 5000);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Also detect window blur which can happen when user opens dev tools or other apps
+    const handleWindowBlur = () => {
+      if (!examCompleted) {
+        setSecurityWarnings((prev) => ({ ...prev, tabSwitch: true }));
+        setTabSwitchCount((prev) => prev + 1);
+
+        toast.warning("Focus lost from exam window", {
+          description: "Leaving the exam window is not allowed",
+          id: "focus-warning",
+        });
+
+        setTimeout(() => {
+          setSecurityWarnings((prev) => ({ ...prev, tabSwitch: false }));
+        }, 5000);
+      }
+    };
+
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [examData.settings.preventTabSwitching, examCompleted]);
 
   useEffect(() => {
     const requestPermissions = async () => {
@@ -363,6 +419,7 @@ const ExamPage: React.FC = () => {
       total: examData.questions.length,
       percentage,
       finalScore,
+      tabSwitches: tabSwitchCount,
     };
   };
 
@@ -580,7 +637,9 @@ const ExamPage: React.FC = () => {
           <div className="max-w-4xl mx-auto">
             {!examCompleted ? (
               <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
-                {(securityWarnings.eye || securityWarnings.face) && (
+                {(securityWarnings.eye ||
+                  securityWarnings.face ||
+                  securityWarnings.tabSwitch) && (
                   <div className="bg-red-900/30 border-b border-red-500/30 p-3 text-center animate-pulse">
                     <div className="flex items-center justify-center gap-2 text-red-300">
                       <XCircle className="w-5 h-5" />
@@ -590,9 +649,20 @@ const ExamPage: React.FC = () => {
                       {securityWarnings.eye &&
                         "Eye movement detected outside exam area. "}
                       {securityWarnings.face && "Face not clearly visible. "}
+                      {securityWarnings.tabSwitch && "Tab switching detected. "}
                       Please correct this to continue.
                     </p>
                   </div>
+                )}
+
+                {examData.settings.preventTabSwitching && (
+                  <Alert className="bg-amber-900/30 border-amber-500/30 mb-2">
+                    <Layers className="h-4 w-4 text-amber-400" />
+                    <AlertDescription className="text-amber-200 text-sm">
+                      Tab switching detection is enabled. Switching tabs during
+                      the exam will be recorded.
+                    </AlertDescription>
+                  </Alert>
                 )}
 
                 <CardHeader className="border-b border-white/10">
@@ -664,6 +734,15 @@ const ExamPage: React.FC = () => {
                               <div
                                 className={`w-2 h-2 rounded-full ${
                                   securityWarnings.face
+                                    ? "bg-red-500"
+                                    : "bg-green-500"
+                                }`}
+                              ></div>
+                            )}
+                            {examData.settings.preventTabSwitching && (
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  securityWarnings.tabSwitch
                                     ? "bg-red-500"
                                     : "bg-green-500"
                                 }`}
@@ -823,6 +902,22 @@ const ExamPage: React.FC = () => {
                             </span>
                           </li>
                         )}
+                      {examData.settings.preventTabSwitching && (
+                        <li className="flex justify-between">
+                          <span className="text-gray-300">
+                            Tab Switches Detected
+                          </span>
+                          <span
+                            className={`font-medium ${
+                              tabSwitchCount > 0
+                                ? "text-red-400"
+                                : "text-green-400"
+                            }`}
+                          >
+                            {tabSwitchCount}
+                          </span>
+                        </li>
+                      )}
                       <li className="flex justify-between border-t border-white/10 pt-2 mt-2">
                         <span className="text-gray-300">Final Score</span>
                         <span className="text-white font-medium">
