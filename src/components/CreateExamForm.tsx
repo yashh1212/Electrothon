@@ -28,10 +28,12 @@ import ExamSchedulingComponent from "./ExamScheduling";
 interface Question {
   id: string;
   text: string;
-  type?: "mcq" | "shortanswer" | "longanswer";
+  type?: "mcq" | "shortanswer" | "longanswer" | "numerical";
   options?: { id: string; text: string }[];
   correctOption?: string;
   answer?: string;
+  numericalAnswer?: number;
+  tolerance?: number;
 }
 
 interface ExamSettings {
@@ -114,20 +116,22 @@ const CreateExamForm: React.FC<CreateExamFormProps> = ({ onExamCreate }) => {
       }
 
       const unansweredQuestions = manualQuestions.filter((q) => {
-        return (
-          (q.type === "shortanswer" || q.type === "longanswer") &&
-          (!q.answer || !q.answer.trim())
-        );
+        if (q.type === "shortanswer" || q.type === "longanswer") {
+          return !q.answer || !q.answer.trim();
+        }
+        if (q.type === "numerical") {
+          return q.numericalAnswer === undefined || q.tolerance === undefined;
+        }
+        return false;
       });
 
       if (unansweredQuestions.length > 0) {
-        toast.error(
-          "Please provide expected answers for all short and long answer questions"
-        );
+        toast.error("Please provide expected answers for all questions");
         return;
       }
     }
 
+    // Generate a unique exam code
     const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let code = "";
     for (let i = 0; i < 4; i++) {

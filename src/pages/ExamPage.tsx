@@ -1,38 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  EyeOff,
-  Camera,
-  XCircle,
-  RotateCw,
-  Download,
-  Award,
-} from "lucide-react";
-import Navbar from "@/components/Navbar";
-import AnimatedBackground from "@/components/AnimatedBackground";
-import HexagonGrid from "@/components/HexagonGrid";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import ExamCertificate from "@/components/ExamCertificate";
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { ArrowLeft, Clock, CheckCircle, AlertCircle, EyeOff, Camera, XCircle, RotateCw, Download, Award } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import AnimatedBackground from '@/components/AnimatedBackground';
+import HexagonGrid from '@/components/HexagonGrid';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import ExamCertificate from '@/components/ExamCertificate';
 
 interface Question {
   id: number;
@@ -59,10 +35,7 @@ const ExamPage: React.FC = () => {
   const [examCompleted, setExamCompleted] = useState(false);
   const [score, setScore] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [securityWarnings, setSecurityWarnings] = useState<{
-    eye: boolean;
-    face: boolean;
-  }>({ eye: false, face: false });
+  const [securityWarnings, setSecurityWarnings] = useState<{eye: boolean, face: boolean}>({eye: false, face: false});
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [requestingPermissions, setRequestingPermissions] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -79,20 +52,20 @@ const ExamPage: React.FC = () => {
     settings: ExamSettings;
   }>({
     title: "Web Development Certification Exam",
-    description: `Exam Code: ${examCode || "CERT-2023"}`,
+    description: `Exam Code: ${examCode || 'CERT-2023'}`,
     settings: {
       negativeMarking: false,
       negativeMarkingValue: 0,
       eyeTracking: false,
       faceDetection: false,
-      generateCertificate: true,
+      generateCertificate: true
     },
     questions: [
       {
         id: 1,
         text: "Which language is primarily used for styling web pages?",
         options: ["HTML", "JavaScript", "CSS", "Python"],
-        correctAnswer: 2,
+        correctAnswer: 2
       },
       {
         id: 2,
@@ -101,15 +74,15 @@ const ExamPage: React.FC = () => {
           "Document Object Model",
           "Digital Ordinance Management",
           "Design Object Mechanism",
-          "Data Object Model",
+          "Data Object Model"
         ],
-        correctAnswer: 0,
+        correctAnswer: 0
       },
       {
         id: 3,
         text: "Which of the following is a JavaScript framework?",
         options: ["Django", "Flask", "Ruby on Rails", "React"],
-        correctAnswer: 3,
+        correctAnswer: 3
       },
       {
         id: 4,
@@ -118,17 +91,17 @@ const ExamPage: React.FC = () => {
           "Application Programming Interface",
           "Application Process Integration",
           "Automated Program Interaction",
-          "Advanced Programming Interface",
+          "Advanced Programming Interface"
         ],
-        correctAnswer: 0,
+        correctAnswer: 0
       },
       {
         id: 5,
         text: "Which of these is a version control system?",
         options: ["Docker", "Git", "Kubernetes", "Jenkins"],
-        correctAnswer: 1,
-      },
-    ],
+        correctAnswer: 1
+      }
+    ]
   });
 
   useEffect(() => {
@@ -136,54 +109,52 @@ const ExamPage: React.FC = () => {
       if (examData.settings.faceDetection || examData.settings.eyeTracking) {
         try {
           setRequestingPermissions(true);
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-          });
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           streamRef.current = stream;
-
+          
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
-
+          
           setPermissionsGranted(true);
           toast.success("Camera access granted");
-
+          
           const securityCheck = setInterval(() => {
             if (examData.settings.eyeTracking && Math.random() > 0.9) {
-              setSecurityWarnings((prev) => ({ ...prev, eye: true }));
+              setSecurityWarnings(prev => ({...prev, eye: true}));
               toast.warning("Eye movement detected outside exam area", {
                 description: "Please focus on the exam",
-                id: "eye-warning",
+                id: "eye-warning"
               });
-
+              
               setTimeout(() => {
-                setSecurityWarnings((prev) => ({ ...prev, eye: false }));
+                setSecurityWarnings(prev => ({...prev, eye: false}));
               }, 5000);
             }
-
+            
             if (examData.settings.faceDetection && Math.random() > 0.95) {
-              setSecurityWarnings((prev) => ({ ...prev, face: true }));
+              setSecurityWarnings(prev => ({...prev, face: true}));
               toast.warning("Face not clearly visible", {
                 description: "Please ensure your face is visible",
-                id: "face-warning",
+                id: "face-warning"
               });
-
+              
               setTimeout(() => {
-                setSecurityWarnings((prev) => ({ ...prev, face: false }));
+                setSecurityWarnings(prev => ({...prev, face: false}));
               }, 5000);
             }
           }, 15000);
-
+          
           return () => {
             clearInterval(securityCheck);
             if (streamRef.current) {
-              streamRef.current.getTracks().forEach((track) => track.stop());
+              streamRef.current.getTracks().forEach(track => track.stop());
             }
           };
         } catch (error) {
           console.error("Error accessing camera:", error);
           toast.error("Camera access denied", {
-            description: "Unable to enable security features",
+            description: "Unable to enable security features"
           });
           setPermissionsGranted(false);
         } finally {
@@ -191,12 +162,12 @@ const ExamPage: React.FC = () => {
         }
       }
     };
-
+    
     requestPermissions();
-
+    
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, [examData.settings.eyeTracking, examData.settings.faceDetection]);
@@ -217,9 +188,7 @@ const ExamPage: React.FC = () => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleAnswerSelect = (optionIndex: number) => {
@@ -243,7 +212,7 @@ const ExamPage: React.FC = () => {
   const calculateScore = () => {
     let correct = 0;
     let incorrect = 0;
-
+    
     examData.questions.forEach((question, index) => {
       if (answers[index] === question.correctAnswer) {
         correct++;
@@ -251,46 +220,40 @@ const ExamPage: React.FC = () => {
         incorrect++;
       }
     });
-
+    
     let finalScore = correct;
     if (examData.settings.negativeMarking) {
-      finalScore = Math.max(
-        0,
-        correct - incorrect * examData.settings.negativeMarkingValue
-      );
+      finalScore = Math.max(0, correct - (incorrect * examData.settings.negativeMarkingValue));
     }
-
-    const percentage = Math.round(
-      (finalScore / examData.questions.length) * 100
-    );
-
+    
+    const percentage = Math.round((finalScore / examData.questions.length) * 100);
+    
     return {
       score: correct,
       incorrect,
-      negativeMarks: examData.settings.negativeMarking
-        ? incorrect * examData.settings.negativeMarkingValue
-        : 0,
+      negativeMarks: examData.settings.negativeMarking ? 
+        (incorrect * examData.settings.negativeMarkingValue) : 0,
       total: examData.questions.length,
       percentage,
-      finalScore,
+      finalScore
     };
   };
 
   const handleSubmitExam = () => {
     setIsSubmitting(true);
-
+    
     setTimeout(() => {
       const result = calculateScore();
       setScore(result.percentage);
       setExamCompleted(true);
       setIsSubmitting(false);
-
+      
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
-
+      
       toast.success("Exam submitted successfully!");
-
+      
       // Auto-show certificate for the sample exam
       if (examData.settings.generateCertificate && result.percentage >= 60) {
         setTimeout(() => {
@@ -306,23 +269,23 @@ const ExamPage: React.FC = () => {
   };
 
   const handleExitExam = () => {
-    navigate("/");
+    navigate('/');
   };
-
+  
   const handleRetryPermissions = async () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach(track => track.stop());
     }
-
+    
     try {
       setRequestingPermissions(true);
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       streamRef.current = stream;
-
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
-
+      
       setPermissionsGranted(true);
       toast.success("Camera access granted");
     } catch (error) {
@@ -337,72 +300,63 @@ const ExamPage: React.FC = () => {
   const handleDownloadCertificate = async () => {
     try {
       if (!certificateRef.current) return;
-
-      const html2canvas = (await import("html2canvas")).default;
+      
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(certificateRef.current, {
         scale: 2,
         logging: false,
         useCORS: true,
-        backgroundColor: null,
+        backgroundColor: null
       });
-
+      
       canvas.toBlob((blob) => {
         if (!blob) {
           toast.error("Failed to generate certificate");
           return;
         }
-
+        
         const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = url;
-        link.download = `${examData.title.replace(
-          /\s+/g,
-          "_"
-        )}_Certificate.png`;
+        link.download = `${examData.title.replace(/\s+/g, '_')}_Certificate.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-
+        
         toast.success("Certificate downloaded successfully");
-      }, "image/png");
+      }, 'image/png');
     } catch (error) {
       console.error("Error generating certificate:", error);
       toast.error("Failed to generate certificate");
     }
   };
 
-  if (
-    (examData.settings.eyeTracking || examData.settings.faceDetection) &&
-    !permissionsGranted &&
-    !examCompleted &&
-    !requestingPermissions
-  ) {
+  if ((examData.settings.eyeTracking || examData.settings.faceDetection) && 
+      !permissionsGranted && 
+      !examCompleted && 
+      !requestingPermissions) {
     return (
       <div className="relative min-h-screen bg-black overflow-hidden">
         <AnimatedBackground />
         <HexagonGrid />
-
+        
         <div className="relative z-10">
           <Navbar />
-
+          
           <div className="container mx-auto px-4 pt-32 pb-16">
             <div className="max-w-md mx-auto">
               <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
                 <CardHeader className="text-center">
-                  <CardTitle className="text-2xl font-bold text-white mb-2">
-                    Camera Access Required
-                  </CardTitle>
-                  <p className="text-gray-300">
-                    This exam requires camera access for security monitoring
-                  </p>
+                  <CardTitle className="text-2xl font-bold text-white mb-2">Camera Access Required</CardTitle>
+                  <p className="text-gray-300">This exam requires camera access for security monitoring</p>
                 </CardHeader>
-
+                
                 <CardContent className="flex flex-col items-center pt-6">
                   <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6 bg-purple-500/20 border-2 border-purple-500">
                     <Camera className="w-12 h-12 text-purple-300" />
                   </div>
-
+                  
                   <div className="text-center mb-8 space-y-4">
                     <p className="text-white">
                       This exam uses the following security features:
@@ -422,7 +376,7 @@ const ExamPage: React.FC = () => {
                       )}
                     </div>
                   </div>
-
+                  
                   <Button
                     onClick={handleRetryPermissions}
                     className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0 w-full"
@@ -443,10 +397,10 @@ const ExamPage: React.FC = () => {
     <div className="relative min-h-screen bg-black overflow-hidden">
       <AnimatedBackground />
       <HexagonGrid />
-
+      
       <div className="relative z-10">
         <Navbar />
-
+        
         <div className="container mx-auto px-4 pt-32 pb-16">
           <div className="max-w-4xl mx-auto">
             {!examCompleted ? (
@@ -458,35 +412,27 @@ const ExamPage: React.FC = () => {
                       <span className="font-medium">Security Warning</span>
                     </div>
                     <p className="text-sm text-red-200 mt-1">
-                      {securityWarnings.eye &&
-                        "Eye movement detected outside exam area. "}
+                      {securityWarnings.eye && "Eye movement detected outside exam area. "}
                       {securityWarnings.face && "Face not clearly visible. "}
                       Please correct this to continue.
                     </p>
                   </div>
                 )}
-
+                
                 <CardHeader className="border-b border-white/10">
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle className="text-2xl font-bold text-white">
-                        {examData.title}
-                      </CardTitle>
-                      <p className="text-sm text-gray-300 mt-1">
-                        {examData.description}
-                      </p>
+                      <CardTitle className="text-2xl font-bold text-white">{examData.title}</CardTitle>
+                      <p className="text-sm text-gray-300 mt-1">{examData.description}</p>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-violet-900/30 border border-violet-500/20">
                       <Clock className="w-4 h-4 text-violet-400" />
-                      <span className="text-violet-300 font-mono">
-                        {formatTime(timeLeft)}
-                      </span>
+                      <span className="text-violet-300 font-mono">{formatTime(timeLeft)}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <div className="text-sm text-gray-300">
-                      Question {currentQuestion + 1} of{" "}
-                      {examData.questions.length}
+                      Question {currentQuestion + 1} of {examData.questions.length}
                     </div>
                     <div className="flex gap-1">
                       {examData.questions.map((_, index) => (
@@ -495,10 +441,10 @@ const ExamPage: React.FC = () => {
                           onClick={() => setCurrentQuestion(index)}
                           className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                             index === currentQuestion
-                              ? "bg-violet-600 text-white"
+                              ? 'bg-violet-600 text-white'
                               : answers[index] >= 0
-                              ? "bg-violet-900/40 text-violet-300 border border-violet-500/50"
-                              : "bg-gray-800/40 text-gray-400 border border-gray-700/50"
+                              ? 'bg-violet-900/40 text-violet-300 border border-violet-500/50'
+                              : 'bg-gray-800/40 text-gray-400 border border-gray-700/50'
                           }`}
                         >
                           {index + 1}
@@ -507,80 +453,62 @@ const ExamPage: React.FC = () => {
                     </div>
                   </div>
                 </CardHeader>
-
+                
                 <CardContent className="pt-6">
-                  {(examData.settings.eyeTracking ||
-                    examData.settings.faceDetection) &&
-                    permissionsGranted && (
-                      <div className="mb-4 flex justify-end">
-                        <div className="relative">
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            className="w-32 h-24 object-cover rounded-lg border border-white/20 shadow-lg"
-                          />
-                          <div className="absolute top-1 right-1 flex gap-1">
-                            {examData.settings.eyeTracking && (
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  securityWarnings.eye
-                                    ? "bg-red-500"
-                                    : "bg-green-500"
-                                }`}
-                              ></div>
-                            )}
-                            {examData.settings.faceDetection && (
-                              <div
-                                className={`w-2 h-2 rounded-full ${
-                                  securityWarnings.face
-                                    ? "bg-red-500"
-                                    : "bg-green-500"
-                                }`}
-                              ></div>
-                            )}
-                          </div>
+                  {(examData.settings.eyeTracking || examData.settings.faceDetection) && permissionsGranted && (
+                    <div className="mb-4 flex justify-end">
+                      <div className="relative">
+                        <video 
+                          ref={videoRef}
+                          autoPlay 
+                          muted 
+                          playsInline
+                          className="w-32 h-24 object-cover rounded-lg border border-white/20 shadow-lg"
+                        />
+                        <div className="absolute top-1 right-1 flex gap-1">
+                          {examData.settings.eyeTracking && (
+                            <div className={`w-2 h-2 rounded-full ${securityWarnings.eye ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                          )}
+                          {examData.settings.faceDetection && (
+                            <div className={`w-2 h-2 rounded-full ${securityWarnings.face ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                          )}
                         </div>
                       </div>
-                    )}
-
+                    </div>
+                  )}
+                  
                   <div className="mb-8">
                     <h3 className="text-xl text-white font-medium mb-4">
                       {examData.questions[currentQuestion].text}
                     </h3>
-
+                    
                     <div className="space-y-3 mt-6">
-                      {examData.questions[currentQuestion].options.map(
-                        (option, index) => (
-                          <div
-                            key={index}
-                            onClick={() => handleAnswerSelect(index)}
-                            className={`p-4 rounded-lg backdrop-blur-sm border transition-all cursor-pointer ${
+                      {examData.questions[currentQuestion].options.map((option, index) => (
+                        <div
+                          key={index}
+                          onClick={() => handleAnswerSelect(index)}
+                          className={`p-4 rounded-lg backdrop-blur-sm border transition-all cursor-pointer ${
+                            answers[currentQuestion] === index
+                              ? 'bg-violet-600/20 border-violet-500 text-white'
+                              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
                               answers[currentQuestion] === index
-                                ? "bg-violet-600/20 border-violet-500 text-white"
-                                : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
-                            }`}
-                          >
-                            <div className="flex items-center">
-                              <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
-                                  answers[currentQuestion] === index
-                                    ? "bg-violet-600 text-white"
-                                    : "bg-white/10 text-gray-400"
-                                }`}
-                              >
-                                {String.fromCharCode(65 + index)}
-                              </div>
-                              <span>{option}</span>
+                                ? 'bg-violet-600 text-white'
+                                : 'bg-white/10 text-gray-400'
+                            }`}>
+                              {String.fromCharCode(65 + index)}
                             </div>
+                            <span>{option}</span>
                           </div>
-                        )
-                      )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </CardContent>
-
+                
                 <CardFooter className="border-t border-white/10 pt-4 flex items-center justify-between">
                   <Button
                     variant="outline"
@@ -590,17 +518,17 @@ const ExamPage: React.FC = () => {
                   >
                     Previous
                   </Button>
-
+                  
                   <div className="flex space-x-3">
                     {currentQuestion === examData.questions.length - 1 ? (
-                      <Button
+                      <Button 
                         onClick={() => setShowConfirmDialog(true)}
                         className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
                       >
                         Submit Exam
                       </Button>
                     ) : (
-                      <Button
+                      <Button 
                         onClick={handleNextQuestion}
                         className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
                       >
@@ -613,25 +541,17 @@ const ExamPage: React.FC = () => {
             ) : (
               <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
                 <CardHeader className="text-center">
-                  <CardTitle className="text-3xl font-bold text-white mb-2">
-                    Exam Completed
-                  </CardTitle>
+                  <CardTitle className="text-3xl font-bold text-white mb-2">Exam Completed</CardTitle>
                   <p className="text-gray-300">Your score has been recorded</p>
                 </CardHeader>
-
+                
                 <CardContent className="flex flex-col items-center pt-6">
-                  <div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 ${
-                      score >= 70
-                        ? "bg-green-600/20 border-2 border-green-500"
-                        : "bg-orange-600/20 border-2 border-orange-500"
-                    }`}
-                  >
-                    <span className="text-4xl font-bold text-white">
-                      {score}%
-                    </span>
+                  <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 ${
+                    score >= 70 ? 'bg-green-600/20 border-2 border-green-500' : 'bg-orange-600/20 border-2 border-orange-500'
+                  }`}>
+                    <span className="text-4xl font-bold text-white">{score}%</span>
                   </div>
-
+                  
                   <div className="text-center mb-6">
                     <h3 className="text-xl font-medium text-white mb-2">
                       {score >= 70 ? (
@@ -647,50 +567,34 @@ const ExamPage: React.FC = () => {
                       )}
                     </h3>
                     <p className="text-gray-300">
-                      You answered {calculateScore().score} out of{" "}
-                      {calculateScore().total} questions correctly
+                      You answered {calculateScore().score} out of {calculateScore().total} questions correctly
                     </p>
                   </div>
-
+                  
                   <div className="w-full max-w-md p-4 rounded-lg bg-white/5 border border-white/10">
-                    <h4 className="text-white font-medium mb-3">
-                      Performance Summary
-                    </h4>
+                    <h4 className="text-white font-medium mb-3">Performance Summary</h4>
                     <ul className="space-y-2">
                       <li className="flex justify-between">
                         <span className="text-gray-300">Total Questions</span>
-                        <span className="text-white font-medium">
-                          {calculateScore().total}
-                        </span>
+                        <span className="text-white font-medium">{calculateScore().total}</span>
                       </li>
                       <li className="flex justify-between">
                         <span className="text-gray-300">Correct Answers</span>
-                        <span className="text-green-400 font-medium">
-                          {calculateScore().score}
-                        </span>
+                        <span className="text-green-400 font-medium">{calculateScore().score}</span>
                       </li>
                       <li className="flex justify-between">
                         <span className="text-gray-300">Wrong Answers</span>
-                        <span className="text-red-400 font-medium">
-                          {calculateScore().incorrect}
-                        </span>
+                        <span className="text-red-400 font-medium">{calculateScore().incorrect}</span>
                       </li>
-                      {examData.settings.negativeMarking &&
-                        calculateScore().negativeMarks > 0 && (
-                          <li className="flex justify-between">
-                            <span className="text-gray-300">
-                              Negative Marking Deduction
-                            </span>
-                            <span className="text-red-400 font-medium">
-                              -{calculateScore().negativeMarks.toFixed(2)}
-                            </span>
-                          </li>
-                        )}
+                      {examData.settings.negativeMarking && calculateScore().negativeMarks > 0 && (
+                        <li className="flex justify-between">
+                          <span className="text-gray-300">Negative Marking Deduction</span>
+                          <span className="text-red-400 font-medium">-{calculateScore().negativeMarks.toFixed(2)}</span>
+                        </li>
+                      )}
                       <li className="flex justify-between border-t border-white/10 pt-2 mt-2">
                         <span className="text-gray-300">Final Score</span>
-                        <span className="text-white font-medium">
-                          {calculateScore().finalScore.toFixed(2)}
-                        </span>
+                        <span className="text-white font-medium">{calculateScore().finalScore.toFixed(2)}</span>
                       </li>
                       <li className="flex justify-between">
                         <span className="text-gray-300">Score Percentage</span>
@@ -698,7 +602,7 @@ const ExamPage: React.FC = () => {
                       </li>
                     </ul>
                   </div>
-
+                  
                   {score >= 60 && examData.settings.generateCertificate && (
                     <div className="mt-6 w-full max-w-md">
                       <Button
@@ -711,7 +615,7 @@ const ExamPage: React.FC = () => {
                     </div>
                   )}
                 </CardContent>
-
+                
                 <CardFooter className="justify-center border-t border-white/10 pt-4">
                   <Button
                     onClick={handleExitExam}
@@ -726,31 +630,30 @@ const ExamPage: React.FC = () => {
           </div>
         </div>
       </div>
-
+      
       <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
         <DialogContent className="bg-gray-900 border border-gray-800 max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-white">Your Certificate</DialogTitle>
             <DialogDescription>
-              Congratulations on completing the exam! You can download your
-              certificate.
+              Congratulations on completing the exam! You can download your certificate.
             </DialogDescription>
           </DialogHeader>
-
+          
           <div className="my-4 overflow-auto max-h-[70vh]">
             <div ref={certificateRef} className="w-full p-4">
-              <ExamCertificate
+              <ExamCertificate 
                 studentName={studentName}
                 examTitle={examData.title}
                 score={score}
                 date={new Date().toLocaleDateString()}
-                examCode={examCode || "CERT-2023"}
+                examCode={examCode || 'CERT-2023'}
               />
             </div>
           </div>
-
+          
           <DialogFooter>
-            <Button
+            <Button 
               onClick={handleDownloadCertificate}
               className="bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white border-0"
             >
@@ -760,24 +663,20 @@ const ExamPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="bg-gray-900 border border-gray-800">
           <DialogHeader>
             <DialogTitle className="text-white">Submit Exam</DialogTitle>
             <DialogDescription>
-              Are you sure you want to submit your exam? You won't be able to
-              change your answers after submission.
+              Are you sure you want to submit your exam? You won't be able to change your answers after submission.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
               Cancel
             </Button>
-            <Button
+            <Button 
               onClick={handleConfirmSubmit}
               className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
             >

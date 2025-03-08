@@ -11,9 +11,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "./ui/form";
 import { toast } from "sonner";
-import { ArrowRight, User, Mail, School } from "lucide-react";
+import {
+  ArrowRight,
+  User,
+  Mail,
+  School,
+  Award,
+  GraduationCap,
+  Building,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
@@ -27,6 +36,8 @@ const formSchema = z.object({
   institution: z.string().min(2, {
     message: "Institution name must be at least 2 characters",
   }),
+  department: z.string().optional(),
+  program: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -48,19 +59,22 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
       email: "",
       studentId: "",
       institution: "",
+      department: "",
+      program: "",
     },
   });
 
   const onSubmit = (data: FormValues) => {
     try {
-      // Store student information in localStorage
+      // Store student information in sessionStorage instead of localStorage
       const studentInfo = {
         ...data,
         examCode,
         registrationTime: new Date().toISOString(),
       };
 
-      localStorage.setItem("current_student", JSON.stringify(studentInfo));
+      // Use sessionStorage instead of localStorage
+      sessionStorage.setItem("current_student", JSON.stringify(studentInfo));
 
       toast.success("Registration successful", {
         description: "You will now be redirected to the exam",
@@ -102,6 +116,10 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">Full Name</FormLabel>
+                  <FormDescription className="text-gray-400 text-xs">
+                    Enter your name as you would like it to appear on the
+                    certificate
+                  </FormDescription>
                   <FormControl>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -147,11 +165,14 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
                     Student ID (Optional)
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Enter your student ID if applicable"
-                      className="h-12 border-none bg-black/20 text-white placeholder:text-gray-400"
-                      {...field}
-                    />
+                    <div className="relative">
+                      <Award className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Enter your student ID if applicable"
+                        className="pl-10 h-12 border-none bg-black/20 text-white placeholder:text-gray-400"
+                        {...field}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -166,9 +187,55 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
                   <FormLabel className="text-white">Institution</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <School className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
                         placeholder="Enter your school or institution name"
+                        className="pl-10 h-12 border-none bg-black/20 text-white placeholder:text-gray-400"
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">
+                    Department (Optional)
+                  </FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <School className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Enter your department"
+                        className="pl-10 h-12 border-none bg-black/20 text-white placeholder:text-gray-400"
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="program"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">
+                    Program of Study (Optional)
+                  </FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Enter your program of study"
                         className="pl-10 h-12 border-none bg-black/20 text-white placeholder:text-gray-400"
                         {...field}
                       />

@@ -7,17 +7,35 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { isExamActive, getExamStatus } from "../services/scheduler";
 import StudentRegistration from "./StudentRegistration";
+import { getStorageItem, STORAGE_KEYS } from "../services/storage";
 
-// Create an exam storage service
-const getStoredExams = () => {
-  const examsJson = localStorage.getItem("user_exams");
-  return examsJson ? JSON.parse(examsJson) : [];
-};
+interface Exam {
+  id: string;
+  title: string;
+  description: string;
+  code: string;
+  createdAt: Date;
+  questions: any[];
+  settings: {
+    negativeMarking: boolean;
+    negativeMarkingValue: number;
+    eyeTracking: boolean;
+    faceDetection: boolean;
+    displayResults: boolean;
+    generateCertificate: boolean;
+  };
+  scheduling?: {
+    date: Date;
+    startTime: string;
+    duration: number;
+    timeZone: string;
+  };
+}
 
 const ExamCodeEntry: React.FC = () => {
   const [examCode, setExamCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [validExam, setValidExam] = useState<any>(null);
+  const [validExam, setValidExam] = useState<Exam | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const navigate = useNavigate();
 
@@ -31,26 +49,51 @@ const ExamCodeEntry: React.FC = () => {
 
     setIsLoading(true);
 
-    // Check if the exam code exists in localStorage
-    const exams = getStoredExams();
-    const exam = exams.find((exam: any) => exam.code === examCode);
+    // Get exams from local storage using the utility function
+    const exams = getStorageItem<Exam[]>(STORAGE_KEYS.USER_EXAMS, []);
 
     setTimeout(() => {
       setIsLoading(false);
+
+      // Convert string dates back to Date objects
+      const parsedExams = exams.map((exam: any) => ({
+        ...exam,
+        createdAt: new Date(exam.createdAt),
+        scheduling: exam.scheduling
+          ? {
+              ...exam.scheduling,
+              date: new Date(exam.scheduling.date),
+            }
+          : undefined,
+      }));
+
+      // Find the exam with the matching code
+      const exam = parsedExams.find((exam) => exam.code === examCode);
+
       if (exam) {
         // Check if exam is scheduled and not yet available
-        if (exam.scheduling && !isExamActive(exam.scheduling)) {
-          const formattedDate = format(new Date(exam.scheduling.date), "PPP");
-          const formattedTime = exam.scheduling.startTime;
+        if (exam.scheduling) {
+          const schedulingDate = new Date(exam.scheduling.date);
+          if (
+            !isExamActive({
+              date: schedulingDate,
+              startTime: exam.scheduling.startTime,
+              duration: exam.scheduling.duration,
+              timeZone: exam.scheduling.timeZone,
+            })
+          ) {
+            const formattedDate = format(schedulingDate, "PPP");
+            const formattedTime = exam.scheduling.startTime;
 
-          toast.error(
-            `This exam is scheduled for ${formattedDate} at ${formattedTime}`,
-            {
-              description: "You can't access it until the scheduled time.",
-              duration: 5000,
-            }
-          );
-          return;
+            toast.error(
+              `This exam is scheduled for ${formattedDate} at ${formattedTime}`,
+              {
+                description: "You can't access it until the scheduled time.",
+                duration: 5000,
+              }
+            );
+            return;
+          }
         }
 
         toast.success(`Exam code ${examCode} is valid`);
