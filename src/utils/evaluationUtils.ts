@@ -62,7 +62,13 @@ export const matchDesiredAnswer = async (
     - 4: The answer is mostly correct and conveys the meaning well.
     - 5: The answer is fully correct and perfectly matches the meaning of the correct answer.
 
-    Also, provide a brief explanation for the grade.
+    Always include this exact phrase in your response: "Grade: X" where X is the numeric grade.
+    
+    Always include this exact phrase in your response: "Explanation: " followed by your explanation.
+
+    Format:
+    Grade: [1-5]
+    Explanation: [Your detailed explanation here]
   `;
 
   const response = await axios.post(
@@ -104,7 +110,13 @@ export const evaluateAnswer = async (
   let grade = 0;
   let analysis = "";
 
-  if (correctnessResponse.includes("Correctness: True")) {
+  // More flexible check for correctness to handle Gemini's varying response formats
+  const isCorrect =
+    correctnessResponse.toLowerCase().includes("correctness: true") ||
+    correctnessResponse.toLowerCase().includes("mostly true") ||
+    correctnessResponse.toLowerCase().includes("partially true");
+
+  if (isCorrect) {
     const matchResponse = await matchDesiredAnswer(
       desiredAnswer,
       studentAnswer
@@ -112,16 +124,44 @@ export const evaluateAnswer = async (
     console.log("\nDesired Answer Matching:");
     console.log(matchResponse);
 
-    // Extract grade and analysis from the matchResponse
-    const gradeMatch = matchResponse.match(/Grade: (\d+)/);
-    const analysisMatch = matchResponse.match(/Explanation: (.+)/);
+    // More robust grade extraction
+    const gradeMatch = matchResponse.match(/Grade:\s*(\d+)/i);
 
-    if (gradeMatch && analysisMatch) {
+    // More flexible analysis extraction
+    let analysisMatch = matchResponse.match(/Explanation:\s*(.*?)(?=$|\n\n)/is);
+    if (!analysisMatch) {
+      // Try to get anything after "Grade: X"
+      analysisMatch = matchResponse.match(/Grade:\s*\d+\s*(.*?)(?=$|\n\n)/is);
+    }
+
+    if (gradeMatch) {
       grade = parseInt(gradeMatch[1], 10);
-      analysis = analysisMatch[1];
+    } else {
+      // Fallback: try to find any number between 1-5 if the exact format isn't found
+      const anyNumberMatch = matchResponse.match(/\b([1-5])\b/);
+      if (anyNumberMatch) {
+        grade = parseInt(anyNumberMatch[1], 10);
+      } else {
+        grade = isCorrect ? 3 : 1; // Default grade based on correctness
+      }
+    }
+
+    if (analysisMatch && analysisMatch[1]) {
+      analysis = analysisMatch[1].trim();
+    } else {
+      // Fallback: use the whole response as analysis if we can't extract it properly
+      analysis = matchResponse.replace(/Grade:\s*\d+/i, "").trim();
     }
   } else {
-    analysis = "The student's answer is factually incorrect.";
+    // If the answer is not correct, extract the explanation for why it's incorrect
+    const explanationMatch = correctnessResponse.match(
+      /Explanation:\s*(.*?)(?=$|\n\n)/is
+    );
+    if (explanationMatch && explanationMatch[1]) {
+      analysis = explanationMatch[1].trim();
+    } else {
+      analysis = "The student's answer is factually incorrect.";
+    }
   }
 
   return { grade, analysis };
