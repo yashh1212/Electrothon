@@ -2,7 +2,7 @@ import React from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
-import { Plus, X, Circle, CheckCircle, Radio } from "lucide-react";
+import { Plus, X, Circle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface McqOptionsProps {
@@ -65,7 +65,7 @@ const McqOptions: React.FC<McqOptionsProps> = ({
         ))}
       </div>
 
-      <div className="flex space-x-2">
+      <div className="flex flex-wrap gap-2">
         {options.length < 6 && (
           <Button
             type="button"
@@ -97,6 +97,26 @@ const McqOptions: React.FC<McqOptionsProps> = ({
         >
           <Plus className="h-3 w-3 mr-1" />
           Add "All of the above"
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            // Add a "None of the above" option
+            if (options.length < 6) {
+              const newOptionId = Date.now().toString();
+              updateOption(questionId, newOptionId, "None of the above");
+              addOption(questionId);
+            } else {
+              toast.error("Maximum 6 options allowed");
+            }
+          }}
+          className="text-xs bg-white/5 border-white/10 text-white hover:bg-white/10"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Add "None of the above"
         </Button>
       </div>
 

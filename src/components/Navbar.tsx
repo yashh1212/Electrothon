@@ -2,7 +2,14 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../services/auth";
 import { Button } from "./ui/button";
-import { LogOut, User, FileText, LogIn, ShieldCheck } from "lucide-react";
+import {
+  LogOut,
+  User,
+  FileText,
+  LogIn,
+  ShieldCheck,
+  BrainCircuit,
+} from "lucide-react";
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout, login } = useAuth();
@@ -22,6 +29,20 @@ const Navbar: React.FC = () => {
           </Link>
 
           <div className="flex items-center space-x-4">
+            <Link
+              to="/practice"
+              className={`text-sm font-medium ${
+                location.pathname === "/practice"
+                  ? "text-white"
+                  : "text-gray-200 hover:text-white"
+              } transition-colors`}
+            >
+              <div className="flex items-center">
+                <BrainCircuit className="w-4 h-4 mr-2" />
+                <span>Practice</span>
+              </div>
+            </Link>
+
             {isAuthenticated ? (
               <>
                 <Link

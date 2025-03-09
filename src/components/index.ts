@@ -14,3 +14,5 @@ export { default as ManualQuestionEntry } from "./ManualQuestionEntry";
 export { default as McqOptions } from "./McqOptions";
 export { default as QuestionTypeSelect } from "./QuestionTypeSelect";
 export { default as ExpectedAnswerField } from "./ExpectedAnswerField";
+export { default as NumericalAnswerField } from "./NumericalAnswerField";
+export { default as PracticeForm } from "./PracticeForm";

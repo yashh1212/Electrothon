@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { isExamActive, getExamStatus } from "../services/scheduler";
 import StudentRegistration from "./StudentRegistration";
-import { getStorageItem, STORAGE_KEYS } from "../services/storage";
+import { getStorageItem, STORAGE_KEYS } from "../services/Storage";
 
 interface Exam {
   id: string;
