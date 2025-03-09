@@ -21,10 +21,10 @@ const Navbar: React.FC = () => {
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-600 rounded-xl flex items-center justify-center text-white font-bold text-lg group-hover:scale-110 transition-transform">
-              EM
+              AEI
             </div>
             <span className="text-xl font-semibold tracking-tight text-white">
-              ExamMaster
+              AbsoluteExamAI
             </span>
           </Link>
 

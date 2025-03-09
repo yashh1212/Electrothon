@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   Clock,
@@ -43,9 +45,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 interface Question {
   id: string;
   text: string;
-  options: { id: string; text: string }[];
-  correctOption?: string;
   type?: "mcq" | "shortanswer" | "longanswer" | "numerical";
+  options?: { id: string; text: string }[];
+  correctOption?: string;
   answer?: string;
   numericalAnswer?: number;
   tolerance?: number;
@@ -90,7 +92,9 @@ const ExamPage: React.FC = () => {
   const { examCode } = useParams();
   const navigate = useNavigate();
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<(number | string | null)[]>([]);
+  const [numericalAnswers, setNumericalAnswers] = useState<number[]>([]);
+  const [textAnswers, setTextAnswers] = useState<string[]>([]);
   const [timeLeft, setTimeLeft] = useState(3600);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [examCompleted, setExamCompleted] = useState(false);
@@ -134,6 +138,7 @@ const ExamPage: React.FC = () => {
       {
         id: "1",
         text: "Which language is primarily used for styling web pages?",
+        type: "mcq",
         options: [
           { id: "a", text: "HTML" },
           { id: "b", text: "JavaScript" },
@@ -145,6 +150,7 @@ const ExamPage: React.FC = () => {
       {
         id: "2",
         text: "What does DOM stand for in web development?",
+        type: "mcq",
         options: [
           { id: "a", text: "Document Object Model" },
           { id: "b", text: "Digital Ordinance Management" },
@@ -156,6 +162,7 @@ const ExamPage: React.FC = () => {
       {
         id: "3",
         text: "Which of the following is a JavaScript framework?",
+        type: "mcq",
         options: [
           { id: "a", text: "Django" },
           { id: "b", text: "Flask" },
@@ -167,6 +174,7 @@ const ExamPage: React.FC = () => {
       {
         id: "4",
         text: "What does API stand for?",
+        type: "mcq",
         options: [
           { id: "a", text: "Application Programming Interface" },
           { id: "b", text: "Application Process Integration" },
@@ -178,6 +186,7 @@ const ExamPage: React.FC = () => {
       {
         id: "5",
         text: "Which of these is a version control system?",
+        type: "mcq",
         options: [
           { id: "a", text: "Docker" },
           { id: "b", text: "Git" },
@@ -212,8 +221,7 @@ const ExamPage: React.FC = () => {
                 preventTabSwitching:
                   foundExam.settings?.preventTabSwitching !== false,
               },
-              questions:
-                foundExam.questions.filter((q) => q.type === "mcq") || [],
+              questions: foundExam.questions || [],
             });
           } else {
             console.error("Exam not found");
@@ -383,7 +391,16 @@ const ExamPage: React.FC = () => {
 
   useEffect(() => {
     if (examData.questions.length > 0) {
-      setAnswers(new Array(examData.questions.length).fill(-1));
+      // Initialize answers for all question types
+      const initialAnswers = new Array(examData.questions.length).fill(null);
+      const initialNumericalAnswers = new Array(examData.questions.length).fill(
+        0
+      );
+      const initialTextAnswers = new Array(examData.questions.length).fill("");
+
+      setAnswers(initialAnswers);
+      setNumericalAnswers(initialNumericalAnswers);
+      setTextAnswers(initialTextAnswers);
     }
   }, [examData.questions]);
 
@@ -401,6 +418,21 @@ const ExamPage: React.FC = () => {
     setAnswers(newAnswers);
   };
 
+  const handleTextAnswerChange = (value: string) => {
+    const newTextAnswers = [...textAnswers];
+    newTextAnswers[currentQuestion] = value;
+    setTextAnswers(newTextAnswers);
+  };
+
+  const handleNumericalAnswerChange = (value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      const newNumericalAnswers = [...numericalAnswers];
+      newNumericalAnswers[currentQuestion] = numValue;
+      setNumericalAnswers(newNumericalAnswers);
+    }
+  };
+
   const handleNextQuestion = () => {
     if (currentQuestion < examData.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
@@ -416,30 +448,49 @@ const ExamPage: React.FC = () => {
   const calculateScore = () => {
     let correct = 0;
     let incorrect = 0;
+    let totalAnswerable = 0;
 
     examData.questions.forEach((question, index) => {
-      const correctOptionIndex = question.options.findIndex(
-        (option) => option.id === question.correctOption
-      );
+      if (question.type === "mcq") {
+        totalAnswerable++;
+        const correctOptionIndex = question.options?.findIndex(
+          (option) => option.id === question.correctOption
+        );
 
-      if (answers[index] === correctOptionIndex) {
-        correct++;
-      } else if (answers[index] >= 0) {
-        incorrect++;
+        if (answers[index] === correctOptionIndex) {
+          correct++;
+        } else if (typeof answers[index] === "number") {
+          incorrect++;
+        }
+      } else if (
+        question.type === "numerical" &&
+        question.numericalAnswer !== undefined
+      ) {
+        totalAnswerable++;
+        const studentAnswer = numericalAnswers[index];
+        const tolerance = question.tolerance || 0;
+
+        if (Math.abs(studentAnswer - question.numericalAnswer) <= tolerance) {
+          correct++;
+        } else {
+          incorrect++;
+        }
       }
+      // Short and long answers require manual grading, so we don't count them here
     });
 
     let finalScore = correct;
-    if (examData.settings.negativeMarking) {
+    if (examData.settings.negativeMarking && totalAnswerable > 0) {
       finalScore = Math.max(
         0,
         correct - incorrect * examData.settings.negativeMarkingValue
       );
     }
 
-    const percentage = Math.round(
-      (finalScore / examData.questions.length) * 100
-    );
+    const percentage =
+      totalAnswerable > 0
+        ? Math.round((finalScore / totalAnswerable) * 100)
+        : 0;
 
     return {
       score: correct,
@@ -447,7 +498,7 @@ const ExamPage: React.FC = () => {
       negativeMarks: examData.settings.negativeMarking
         ? incorrect * examData.settings.negativeMarkingValue
         : 0,
-      total: examData.questions.length,
+      total: totalAnswerable,
       percentage,
       finalScore,
       tabSwitches: tabSwitchCount,
@@ -551,6 +602,102 @@ const ExamPage: React.FC = () => {
       setPermissionsGranted(false);
     } finally {
       setRequestingPermissions(false);
+    }
+  };
+
+  const renderQuestionInput = () => {
+    const currentQ = examData.questions[currentQuestion];
+
+    if (!currentQ) return null;
+
+    switch (currentQ.type) {
+      case "mcq":
+        return (
+          <div className="space-y-3 mt-6">
+            {currentQ.options?.map((option, index) => (
+              <div
+                key={index}
+                onClick={() => handleAnswerSelect(index)}
+                className={`p-4 rounded-lg backdrop-blur-sm border transition-all cursor-pointer ${
+                  answers[currentQuestion] === index
+                    ? "bg-violet-600/20 border-violet-500 text-white"
+                    : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
+                }`}
+              >
+                <div className="flex items-center">
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
+                      answers[currentQuestion] === index
+                        ? "bg-violet-600 text-white"
+                        : "bg-white/10 text-gray-400"
+                    }`}
+                  >
+                    {String.fromCharCode(65 + index)}
+                  </div>
+                  <span>{option.text}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case "shortanswer":
+        return (
+          <div className="mt-6">
+            <Textarea
+              value={textAnswers[currentQuestion] || ""}
+              onChange={(e) => handleTextAnswerChange(e.target.value)}
+              placeholder="Type your answer here (max 200 words)..."
+              className="min-h-[150px] resize-none bg-white/5 border-white/10 text-white"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Max 200 words. Your answer will be saved automatically.
+            </p>
+          </div>
+        );
+
+      case "longanswer":
+        return (
+          <div className="mt-6">
+            <Textarea
+              value={textAnswers[currentQuestion] || ""}
+              onChange={(e) => handleTextAnswerChange(e.target.value)}
+              placeholder="Type your answer here (400-500 words)..."
+              className="min-h-[250px] resize-none bg-white/5 border-white/10 text-white"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Expected 400-500 words. Your answer will be saved automatically.
+            </p>
+          </div>
+        );
+
+      case "numerical":
+        return (
+          <div className="mt-6">
+            <div className="space-y-2">
+              <Input
+                type="number"
+                step="any"
+                value={numericalAnswers[currentQuestion] || ""}
+                onChange={(e) => handleNumericalAnswerChange(e.target.value)}
+                placeholder="Enter your numerical answer"
+                className="bg-white/5 border-white/10 text-white"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Enter a numerical value as your answer.
+              </p>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="mt-6 p-4 bg-red-500/20 border border-red-500/30 rounded-lg text-white">
+            <p>
+              Unknown question type. Please contact your exam administrator.
+            </p>
+          </div>
+        );
     }
   };
 
@@ -723,14 +870,20 @@ const ExamPage: React.FC = () => {
                       {examData.questions.length}
                     </div>
                     <div className="flex gap-1">
-                      {examData.questions.map((_, index) => (
+                      {examData.questions.map((question, index) => (
                         <button
                           key={index}
                           onClick={() => setCurrentQuestion(index)}
                           className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                             index === currentQuestion
                               ? "bg-violet-600 text-white"
-                              : answers[index] >= 0
+                              : (question.type === "mcq" &&
+                                  typeof answers[index] === "number") ||
+                                (question.type === "numerical" &&
+                                  numericalAnswers[index] !== 0) ||
+                                ((question.type === "shortanswer" ||
+                                  question.type === "longanswer") &&
+                                  textAnswers[index])
                               ? "bg-violet-900/40 text-violet-300 border border-violet-500/50"
                               : "bg-gray-800/40 text-gray-400 border border-gray-700/50"
                           }`}
@@ -754,7 +907,7 @@ const ExamPage: React.FC = () => {
                             muted
                             playsInline
                             className="w-32 h-24 object-cover rounded-lg border border-white/20 shadow-lg"
-                            style={{ display: "block" }} // Ensure video element is visible
+                            style={{ display: "block" }}
                           />
                           <div className="absolute top-1 right-1 flex gap-1">
                             {examData.settings.eyeTracking && (
@@ -794,34 +947,7 @@ const ExamPage: React.FC = () => {
                       {examData.questions[currentQuestion].text}
                     </h3>
 
-                    <div className="space-y-3 mt-6">
-                      {examData.questions[currentQuestion].options.map(
-                        (option, index) => (
-                          <div
-                            key={index}
-                            onClick={() => handleAnswerSelect(index)}
-                            className={`p-4 rounded-lg backdrop-blur-sm border transition-all cursor-pointer ${
-                              answers[currentQuestion] === index
-                                ? "bg-violet-600/20 border-violet-500 text-white"
-                                : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
-                            }`}
-                          >
-                            <div className="flex items-center">
-                              <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${
-                                  answers[currentQuestion] === index
-                                    ? "bg-violet-600 text-white"
-                                    : "bg-white/10 text-gray-400"
-                                }`}
-                              >
-                                {String.fromCharCode(65 + index)}
-                              </div>
-                              <span>{option.text}</span>
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
+                    {renderQuestionInput()}
                   </div>
                 </CardContent>
 
@@ -830,225 +956,250 @@ const ExamPage: React.FC = () => {
                     variant="outline"
                     onClick={handlePrevQuestion}
                     disabled={currentQuestion === 0}
-                    className="border-white/20 text-gray-300 hover:bg-white/10"
+                    className="border-white/10 text-white hover:bg-white/5"
                   >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
                     Previous
                   </Button>
 
-                  <div className="flex space-x-3">
+                  <div>
                     {currentQuestion === examData.questions.length - 1 ? (
                       <Button
                         onClick={() => setShowConfirmDialog(true)}
-                        className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white border-0"
+                        className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
                       >
-                        Submit Exam
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Finish Exam
                       </Button>
                     ) : (
                       <Button
                         onClick={handleNextQuestion}
-                        className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
+                        className="bg-white/10 text-white hover:bg-white/20 border-0"
                       >
-                        Next Question
+                        Next
+                        <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
                       </Button>
                     )}
                   </div>
                 </CardFooter>
               </Card>
             ) : (
-              <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in">
-                <CardHeader className="text-center">
+              <Card className="backdrop-blur-xl bg-black/30 border border-white/10 shadow-lg animate-fade-in overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-blue-500/10"></div>
+                  <div className="absolute top-20 left-10 w-32 h-32 bg-violet-500/20 rounded-full blur-3xl"></div>
+                  <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl"></div>
+                </div>
+
+                <CardHeader className="text-center relative">
+                  <div className="mb-5">
+                    {score >= 60 ? (
+                      <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-emerald-500/20 border-2 border-emerald-500">
+                        <CheckCircle className="w-12 h-12 text-emerald-400" />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-amber-500/20 border-2 border-amber-500">
+                        <AlertCircle className="w-12 h-12 text-amber-400" />
+                      </div>
+                    )}
+                  </div>
+
                   <CardTitle className="text-3xl font-bold text-white mb-2">
-                    Exam Completed
+                    {score >= 60 ? "Congratulations!" : "Exam Completed"}
                   </CardTitle>
-                  <p className="text-gray-300">Your score has been recorded</p>
-                </CardHeader>
-
-                <CardContent className="flex flex-col items-center pt-6">
-                  <div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 ${
-                      score >= 70
-                        ? "bg-green-600/20 border-2 border-green-500"
-                        : "bg-orange-600/20 border-2 border-orange-500"
-                    }`}
-                  >
-                    <span className="text-4xl font-bold text-white">
-                      {score}%
-                    </span>
-                  </div>
-
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-medium text-white mb-2">
-                      {score >= 70 ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <CheckCircle className="text-green-500" />
-                          <span>Passed</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          <AlertCircle className="text-orange-500" />
-                          <span>Needs Improvement</span>
-                        </div>
-                      )}
-                    </h3>
-                    <p className="text-gray-300">
-                      You answered {calculateScore().score} out of{" "}
-                      {calculateScore().total} questions correctly
-                    </p>
-                  </div>
-
-                  <div className="w-full max-w-md p-4 rounded-lg bg-white/5 border border-white/10">
-                    <h4 className="text-white font-medium mb-3">
-                      Performance Summary
-                    </h4>
-                    <ul className="space-y-2">
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Total Questions</span>
-                        <span className="text-white font-medium">
-                          {calculateScore().total}
-                        </span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Correct Answers</span>
-                        <span className="text-green-400 font-medium">
-                          {calculateScore().score}
-                        </span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-300">Wrong Answers</span>
-                        <span className="text-red-400 font-medium">
-                          {calculateScore().incorrect}
-                        </span>
-                      </li>
-                      {examData.settings.negativeMarking &&
-                        calculateScore().negativeMarks > 0 && (
-                          <li className="flex justify-between">
-                            <span className="text-gray-300">
-                              Negative Marking Deduction
-                            </span>
-                            <span className="text-red-400 font-medium">
-                              -{calculateScore().negativeMarks.toFixed(2)}
-                            </span>
-                          </li>
-                        )}
-                      {examData.settings.preventTabSwitching && (
-                        <li className="flex justify-between">
-                          <span className="text-gray-300">
-                            Tab Switches Detected
-                          </span>
-                          <span
-                            className={`font-medium ${
-                              tabSwitchCount > 0
-                                ? "text-red-400"
-                                : "text-green-400"
-                            }`}
-                          >
-                            {tabSwitchCount}
-                          </span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
+                  <p className="text-xl text-white mb-2">
+                    Your Score: <span className="font-bold">{score}%</span>
+                  </p>
+                  <p className="text-gray-300">
+                    {score >= 60
+                      ? "You have successfully passed the exam!"
+                      : "Keep practicing and try again. You need 60% to pass."}
+                  </p>
 
                   {showCertificate && (
                     <div className="mt-6">
-                      <h3 className="text-xl font-medium text-white mb-4 text-center">
-                        <Award className="inline-block mr-2 text-yellow-400" />
-                        Your Certificate
-                      </h3>
+                      <p className="text-gray-300 mb-4">
+                        Your certificate has been generated:
+                      </p>
                       <div
                         ref={certificateRef}
-                        className="p-2 bg-white/5 rounded-lg"
+                        className="relative w-full max-w-xl mx-auto"
                       >
                         <ExamCertificate
                           studentName={studentName}
                           examTitle={examData.title}
                           score={score}
-                          date={new Date().toLocaleDateString()}
-                          examCode={examCode || ""}
+                          date={new Date()}
                         />
                       </div>
-                      <div className="mt-4 flex justify-center">
-                        <Button className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0">
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Certificate
-                        </Button>
-                      </div>
+
+                      <Button
+                        className="mt-4 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
+                        onClick={() => {
+                          toast({
+                            title: "Success",
+                            description: "Certificate downloaded successfully",
+                          });
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Certificate
+                      </Button>
                     </div>
                   )}
+                </CardHeader>
 
-                  <div className="mt-6 flex justify-center gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={handleExitExam}
-                      className="border-white/20 text-gray-300 hover:bg-white/10"
-                    >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Return to Dashboard
-                    </Button>
+                <CardContent className="relative">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <h3 className="text-lg font-medium text-white mb-3 flex items-center">
+                        <Award className="w-5 h-5 text-yellow-400 mr-2" />
+                        Performance
+                      </h3>
+                      <ul className="space-y-2 text-gray-300">
+                        <li className="flex justify-between">
+                          <span>Graded Questions:</span>
+                          <span className="font-medium text-white">
+                            {calculateScore().total}
+                          </span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Correct Answers:</span>
+                          <span className="font-medium text-emerald-400">
+                            {calculateScore().score}
+                          </span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Incorrect Answers:</span>
+                          <span className="font-medium text-red-400">
+                            {calculateScore().incorrect}
+                          </span>
+                        </li>
+                        {examData.settings.negativeMarking && (
+                          <li className="flex justify-between">
+                            <span>Negative Marks:</span>
+                            <span className="font-medium text-amber-400">
+                              -{calculateScore().negativeMarks}
+                            </span>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                      <h3 className="text-lg font-medium text-white mb-3 flex items-center">
+                        <Layers className="w-5 h-5 text-blue-400 mr-2" />
+                        Exam Details
+                      </h3>
+                      <ul className="space-y-2 text-gray-300">
+                        <li className="flex justify-between">
+                          <span>Exam Code:</span>
+                          <span className="font-medium text-white">
+                            {examCode}
+                          </span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Total Questions:</span>
+                          <span className="font-medium text-white">
+                            {examData.questions.length}
+                          </span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Tab Switches:</span>
+                          <span className="font-medium text-white">
+                            {tabSwitchCount}
+                          </span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Status:</span>
+                          <span
+                            className={`font-medium ${
+                              score >= 60 ? "text-emerald-400" : "text-red-400"
+                            }`}
+                          >
+                            {score >= 60 ? "PASSED" : "FAILED"}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
+
+                  <Button
+                    onClick={handleExitExam}
+                    className="w-full bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white border-0"
+                  >
+                    Return to Home
+                  </Button>
                 </CardContent>
               </Card>
             )}
+
+            <Dialog
+              open={showConfirmDialog}
+              onOpenChange={setShowConfirmDialog}
+            >
+              <DialogContent className="bg-gray-900 border border-gray-700 text-white">
+                <DialogHeader>
+                  <DialogTitle>Submit Exam</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Are you sure you want to submit your exam? You won't be able
+                    to make changes after submission.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowConfirmDialog(false)}
+                    className="border-gray-700 text-white hover:bg-gray-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleConfirmSubmit}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Submit Exam
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={showSecurityViolationDialog}
+              onOpenChange={setShowSecurityViolationDialog}
+            >
+              <DialogContent className="bg-red-900/90 border border-red-700 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-red-100">
+                    Security Violation Detected
+                  </DialogTitle>
+                  <DialogDescription className="text-red-200">
+                    Multiple tab switching or window changes have been detected,
+                    which violates exam security policies.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="bg-red-800/50 border border-red-700/50 p-4 rounded-lg my-3">
+                  <p className="text-red-100 font-medium">
+                    Your exam will be submitted automatically with current
+                    answers.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={() => {
+                      setShowSecurityViolationDialog(false);
+                      handleSubmitExam(true);
+                    }}
+                    className="bg-red-700 hover:bg-red-800 text-white w-full"
+                  >
+                    Acknowledge and Submit
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
-
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="bg-black/90 border border-white/10 backdrop-blur-xl p-6 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white">
-              Submit Exam?
-            </DialogTitle>
-            <DialogDescription className="text-gray-300 mt-2">
-              Are you sure you want to submit your exam? You won't be able to
-              change your answers after submission.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmDialog(false)}
-              className="border-white/20 text-gray-300 hover:bg-white/10"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmSubmit}
-              className="bg-violet-600 hover:bg-violet-700 text-white"
-            >
-              Submit
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={showSecurityViolationDialog}
-        onOpenChange={setShowSecurityViolationDialog}
-      >
-        <DialogContent className="bg-black/90 border border-red-500/10 backdrop-blur-xl p-6 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-red-300">
-              Security Violation Detected
-            </DialogTitle>
-            <DialogDescription className="text-gray-300 mt-2">
-              Multiple tab switching has been detected. This is against exam
-              security policy. Your exam will be submitted automatically.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button
-              onClick={() => {
-                setShowSecurityViolationDialog(false);
-                handleSubmitExam(true);
-              }}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Understand
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
